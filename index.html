@@ -64,6 +64,10 @@ header{
 .syncbar{display:flex;gap:6px;margin-top:10px;flex-wrap:wrap;align-items:center}
 .syncpill{display:inline-flex;align-items:center;gap:4px;font-size:11px;font-weight:700;
   background:rgba(255,255,255,.15);color:#fff;border-radius:999px;padding:4px 9px}
+.syncpill.net{font-weight:800}
+.syncpill.net.live{background:rgba(34,197,94,.28)}
+.syncpill.net.local{background:rgba(234,179,8,.30)}
+.syncpill.net.off{background:rgba(148,163,184,.32)}
 .sync-spacer{flex:1}
 .miniact{font-size:11px;font-weight:800;color:#fff;background:rgba(255,255,255,.2);
   border-radius:999px;padding:5px 11px}
@@ -99,6 +103,7 @@ main{padding:8px 12px 120px}
 .tag.dept{background:var(--dept-bg);color:var(--dept)}
 .tag.ok{background:var(--green-bg);color:var(--green)}
 .tag.fix{background:var(--orange-bg);color:var(--orange)}
+.tag.new{background:#e0e7ff;color:#4338ca}
 .tag.sync{display:inline-flex;align-items:center;gap:3px}
 .tag.s-local{background:#f1f5f9;color:#475569}
 .tag.s-sending{background:#e0f2fe;color:#0369a1}
@@ -287,6 +292,9 @@ main{padding:8px 12px 120px}
 @keyframes rot{to{transform:rotate(360deg)}}
 .morebtn{display:block;width:100%;text-align:center;padding:13px;color:var(--blue);font-weight:800;
   font-size:13px;background:#fff;border-radius:12px;box-shadow:var(--shadow);margin-top:4px}
+.regbtn{display:block;width:100%;text-align:center;padding:15px;color:#fff;font-weight:800;font-size:14px;
+  background:var(--blue);border-radius:14px;box-shadow:var(--shadow);margin:4px auto;max-width:480px}
+.regbtn:active{transform:scale(.99)}
 .warnbar{background:#fff7ed;color:#9a3412;font-size:12px;font-weight:700;padding:9px 14px;text-align:center}
 </style>
 </head>
@@ -308,7 +316,7 @@ main{padding:8px 12px 120px}
       <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#94a3b8" stroke-width="2.2"
         stroke-linecap="round"><circle cx="11" cy="11" r="7"></circle><path d="M21 21l-4.3-4.3"></path></svg>
       <input id="search" type="search" inputmode="search" autocomplete="off"
-        placeholder="Cari No. Aset / No. UNIZA…">
+        placeholder="Cari No. Aset, UNIZA, Lokasi, Jenama, Serial…">
       <button class="clr" id="clrBtn">✕</button>
     </div>
     <button class="scanbtn" id="scanBtn" title="Imbas QR / Barcode">
@@ -320,6 +328,7 @@ main{padding:8px 12px 120px}
   </div>
 
   <div class="syncbar" id="syncbar">
+    <span class="syncpill net" id="netPill">● …</span>
     <span class="syncpill" id="sp-total">💾 0</span>
     <span class="syncpill" id="sp-sending">⏳ 0</span>
     <span class="syncpill" id="sp-ok">✅ 0</span>
@@ -383,6 +392,13 @@ main{padding:8px 12px 120px}
   <div class="sheet">
     <div class="sheet-h"><b id="photoTitle">📸 Gambar</b><button class="x" data-close>✕</button></div>
     <div class="sheet-b" id="photoBody"></div>
+  </div>
+</div>
+
+<div class="overlay" id="regModal">
+  <div class="sheet">
+    <div class="sheet-h"><b>➕ Daftar Aset Baharu</b><button class="x" data-close>✕</button></div>
+    <div class="sheet-b" id="regBody"></div>
   </div>
 </div>
 
@@ -471,6 +487,21 @@ const EXTRA_KINDS=['tambahan1','tambahan2'];
 let wizardAsset=null;          // aset yang sedang diurus dlm wizard gambar
 let wizardReveal=0;            // bil. slot tambahan yang didedahkan (0-2)
 let wizardSkip=new Set();      // slot yang dilangkau (UI sahaja)
+let wizardRequired=false;      // mod wajib (borang Daftar Aset Baharu)
+
+let NEW_ASSETS=new Map();      // asset -> rekod aset baharu (didaftar pengguna)
+
+/* Format No. Aset: SZA + 5 digit + F  (cth SZA00009F) */
+function isValidAssetNo(s){ return /^SZA\d{5}F$/i.test(String(s||'').trim()); }
+function normalizeAssetNo(q){
+  q=String(q||'').trim().toUpperCase();
+  if(isValidAssetNo(q)) return q;
+  const m=q.match(/\d+/g);                 // ambil digit pertama yang dijumpai
+  if(!m) return '';
+  let d=m.join('').slice(-5);              // maks 5 digit terakhir
+  if(d.length>5||d.length===0) return '';
+  return 'SZA'+d.padStart(5,'0')+'F';
+}
 
 function getEndpoint(){ return (localStorage.getItem('endpoint')||CONFIG.ENDPOINT||"").trim(); }
 function getUser(){ return localStorage.getItem('auditor_name')||""; }
@@ -478,7 +509,7 @@ function getUser(){ return localStorage.getItem('auditor_name')||""; }
 /* ============================================================
    IndexedDB (idb ringkas)
    ============================================================ */
-const DB_NAME="hosza_audit", DB_VER=1;
+const DB_NAME="hosza_audit", DB_VER=2;
 let _db=null;
 function openDB(){
   return new Promise((res,rej)=>{
@@ -489,6 +520,7 @@ function openDB(){
       const db=e.target.result;
       if(!db.objectStoreNames.contains('audits')) db.createObjectStore('audits',{keyPath:'asset'});
       if(!db.objectStoreNames.contains('photos')) db.createObjectStore('photos',{keyPath:'id',autoIncrement:true});
+      if(!db.objectStoreNames.contains('newassets')) db.createObjectStore('newassets',{keyPath:'asset'});
     };
     r.onsuccess=e=>{ settled=true; _db=e.target.result; res(_db); };
     r.onerror=e=>{ settled=true; rej(e.target.error||new Error('idb-error')); };
@@ -545,9 +577,9 @@ function tagWorkgroup(wg){
 }
 function syncTag(o){
   if(!o) return "";
-  const m={local:['s-local','💾','Lokal'],sending:['s-sending','⏳','Hantar'],
+  const m={draft:['s-local','✏️','Draf'],local:['s-local','💾','Lokal'],sending:['s-sending','⏳','Hantar'],
            confirmed:['s-confirmed','✅','Sah'],failed:['s-failed','⚠️','Gagal']};
-  const v=m[o.dataStatus||'local'];
+  const v=m[o.dataStatus]||m.local;
   return `<span class="tag sync ${v[0]}">${v[1]} ${v[2]}</span>`;
 }
 
@@ -560,10 +592,11 @@ function cardHTML(a){
   const fixed = o&&o.edits&&Object.keys(o.edits).length>0;
   const uniza=effVal(a,'uniza');
 
+  const isNew=o&&o.isNew;
   const tags=[
-    tagWorkgroup(a[F.workgroup]),
+    isNew?`<span class="tag new">➕ Aset Baharu</span>`:tagWorkgroup(a[F.workgroup]),
     a[F.userdept]?`<span class="tag dept">${esc(a[F.userdept])}</span>`:"",
-    checked?`<span class="tag ok">✓ Diperiksa</span>`:"",
+    (checked&&!isNew)?`<span class="tag ok">✓ Diperiksa</span>`:"",
     fixed?`<span class="tag fix">Pembetulan</span>`:"",
     o?syncTag(o):""
   ].join("");
@@ -653,12 +686,17 @@ function photosSectionHTML(no,a){
 function viewChip(label,url){ return `<span class="pchip" data-view="${esc(url)}">🖼️ ${esc(label)}</span>`; }
 
 /* ----- Senarai utama ----- */
+// Medan yang boleh dicari: No.Aset, UNIZA, No.Lokasi, Jabatan, Jenama, Serial,
+// Jenis Aset, Kod Jabatan, Pengilang.
+const SEARCH_KEYS=['asset','uniza','locno','deptname','brand','serial','typedesc','userdept','manuf'];
 function getResults(){
   let res;
   const q=curQuery.trim().toUpperCase();
   if(q){
-    res=ASSETS.filter(a=> a[F.asset].toUpperCase().includes(q) ||
-      (a[F.uniza]&&a[F.uniza].toUpperCase().includes(q)));
+    res=ASSETS.filter(a=>{
+      for(const k of SEARCH_KEYS){ const v=effVal(a,k); if(v&&String(v).toUpperCase().includes(q)) return true; }
+      return false;
+    });
   } else {
     // tiada carian: papar aset yang telah diaudit (kerja pemeriksa)
     res=ASSETS.filter(a=>auditMap.has(a[F.asset]));
@@ -676,9 +714,15 @@ function render(){
   const res=getResults();
 
   if(res.length===0){
-    if(q){ list.innerHTML=`<div class="hint"><span class="big">🔍</span>Tiada aset sepadan dengan "<b>${esc(q)}</b>".</div>`; }
+    if(q){
+      const sugg=normalizeAssetNo(q);
+      list.innerHTML=`<div class="hint"><span class="big">🔍</span>Tiada aset sepadan dengan "<b>${esc(q)}</b>".</div>
+        ${sugg?`<button class="regbtn" id="regSuggest" data-no="${esc(sugg)}">➕ Daftar Aset Baharu: <b>${esc(sugg)}</b></button>`
+              :`<button class="regbtn" id="regSuggest" data-no="">➕ Daftar Aset Baharu</button>`}`;
+      const rb=$('#regSuggest'); if(rb) rb.onclick=()=>openRegister(rb.dataset.no||q);
+    }
     else if(curFilter!=='all'){ list.innerHTML=`<div class="hint"><span class="big">📋</span>Tiada rekod untuk penapis ini.</div>`; }
-    else { list.innerHTML=`<div class="hint"><span class="big">🔎</span>Taip <b>No. Aset</b> atau <b>No. UNIZA</b> untuk mula,<br>atau tekan ikon imbas untuk scan QR/Barcode.<br><br>Aset yang anda audit akan dipaparkan di sini.</div>`; }
+    else { list.innerHTML=`<div class="hint"><span class="big">🔎</span>Taip <b>No. Aset / UNIZA / Lokasi / Jenama / Serial…</b> untuk mula,<br>atau tekan ikon imbas untuk scan QR/Barcode.<br><br>Aset yang anda audit akan dipaparkan di sini.</div>`; }
     $('#fab').classList.remove('show');
     return;
   }
@@ -741,15 +785,24 @@ async function getOrInitAudit(no){
   const a=ASSET_BY_NO.get(no.toUpperCase());
   if(!o){
     o={asset:no, uniza:(a?a[F.uniza]:'')||'', user:getUser(), deviceTime:nowISO(),
-       checked:false, edits:{}, note:'', photos:{},
+       checked:false, edits:{}, note:'', photos:{}, photoTiada:{},
        dataStatus:'local', updatedAt:nowISO()};
   }
   if(!o.photos) o.photos={};
+  if(!o.photoTiada) o.photoTiada={};
   return o;
+}
+function isNewAsset(no){ return NEW_ASSETS.has(no); }
+// Simpan overlay ke store yang betul (aset baharu -> 'newassets', selain -> 'audits')
+async function persistAudit(no,o){
+  if(isNewAsset(no)){
+    const r=NEW_ASSETS.get(no); if(r){ r.photos=o.photos||{}; r.photoTiada=o.photoTiada||{}; if(o.dataStatus) r.dataStatus=o.dataStatus; await dbPut('newassets',r); }
+  } else { await dbPut('audits',o); }
 }
 
 async function doTick(no){
   if(!getUser()){ openName(); return; }
+  if(isNewAsset(no)){ toast('ℹ️ Aset baharu sudah ditanda Diperiksa'); return; }
   let o=await getOrInitAudit(no);
   o.checked=true; o.checkedBy=getUser(); o.checkedAt=nowISO();
   o.user=getUser(); o.deviceTime=nowISO(); o.dataStatus='local'; o.updatedAt=nowISO();
@@ -760,6 +813,7 @@ async function doTick(no){
 
 function openEdit(no){
   if(!getUser()){ openName(); return; }
+  if(isNewAsset(no)){ openRegister(no); return; }   // aset baharu -> borang daftar
   const a=ASSET_BY_NO.get(no.toUpperCase()); if(!a) return;
   // Medan: No. UNIZA (+imbas), Lokasi, Jenama, Model, No. Serial
   const fields=[
@@ -826,11 +880,113 @@ async function delAudit(no){
 }
 
 /* ============================================================
+   Daftar Aset Baharu (tiada dalam pangkalan data)
+   ============================================================ */
+function scanIconSVG(){ return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M3 12h18"/></svg>'; }
+
+function openRegister(prefill){
+  if(!getUser()){ openName(); return; }
+  const no=normalizeAssetNo(prefill)||String(prefill||'').trim().toUpperCase();
+  const ex=NEW_ASSETS.get(no)||{fields:{},photos:{},photoTiada:{}};
+  let h=`<div style="font-size:12.5px;color:var(--muted);margin-bottom:14px">Daftar aset yang <b>tiada dalam pangkalan data</b>. Format No. Aset: <b>SZA#####F</b>. Gambar No.Aset, Nameplate & Keseluruhan <b style="color:var(--red)">wajib</b>.</div>`;
+  h+=`<div class="formrow"><label>No. Aset <span style="color:var(--red)">*</span></label>
+    <div class="inp-scan">
+      <input id="rf-asset" value="${esc(no)}" placeholder="SZA00000F" autocapitalize="characters">
+      <button type="button" class="scan-mini" id="rScanAsset" title="Imbas QR No. Aset">${scanIconSVG()}</button>
+    </div>
+    <div class="orig">Auto-jana dari carian — boleh ubah.</div></div>`;
+  h+=`<div class="formrow"><label>No. UNIZA</label>
+    <div class="inp-scan">
+      <input id="rf-uniza" value="${esc(ex.fields.uniza||'')}" placeholder="Imbas barcode atau taip…">
+      <button type="button" class="scan-mini" id="rScanUniza" title="Imbas barcode UNIZA">${scanIconSVG()}</button>
+    </div></div>`;
+  for(const [k,lbl] of [['location','Lokasi'],['brand','Jenama'],['model','Model'],['serial','No. Serial']]){
+    h+=`<div class="formrow"><label>${esc(lbl)}</label><input id="rf-${k}" value="${esc(ex.fields[k]||'')}"></div>`;
+  }
+  h+=`<div class="formrow"><label>Catatan</label><textarea id="rf-note" placeholder="Catatan (jika ada)…">${esc(ex.fields.note||'')}</textarea></div>`;
+  h+=`<div class="formrow"><label>Gambar <span style="color:var(--red)">*</span></label>
+    <button type="button" class="btn-photo" id="rPhoto">📸 Ambil Gambar (wajib 3)</button>
+    <div class="orig" id="rPhotoStat"></div></div>`;
+  h+=`<button class="btn-primary" id="regSave">💾 Daftar Aset</button>`;
+  $('#regBody').innerHTML=h;
+  $('#rScanAsset').onclick=()=>openScanner('capture',v=>{ $('#rf-asset').value=normalizeAssetNo(v)||String(v).toUpperCase(); });
+  $('#rScanUniza').onclick=()=>openScanner('capture',v=>{ $('#rf-uniza').value=v; });
+  $('#rPhoto').onclick=()=>{
+    const an=$('#rf-asset').value.trim().toUpperCase();
+    if(!isValidAssetNo(an)){ toast('Isi No. Aset sah dahulu (SZA#####F)','err'); $('#rf-asset').focus(); return; }
+    ensureDraft(an); openPhotoWizard(an,true);
+  };
+  $('#regSave').onclick=saveNewAsset;
+  showOverlay('regModal'); updateRegPhotoStat(no);
+}
+
+function newAssetMaster(rec){
+  const f=rec.fields||{};
+  return [rec.asset, f.uniza||'', '', '', '', '', f.location||'', '', '', '', f.brand||'', f.model||'', f.serial||'', '', '', ''];
+}
+function ensureDraft(no){
+  if(!NEW_ASSETS.has(no)) NEW_ASSETS.set(no,{asset:no,fields:{},photos:{},photoTiada:{},checked:true,user:getUser(),deviceTime:nowISO(),dataStatus:'draft'});
+  ensureNewInIndex(no);
+}
+function ensureNewInIndex(no){
+  const rec=NEW_ASSETS.get(no); if(!rec) return;
+  const m=newAssetMaster(rec);
+  if(ASSET_BY_NO.has(no)){ const old=ASSET_BY_NO.get(no); for(let i=0;i<m.length;i++) old[i]=m[i]; }
+  else { ASSETS.push(m); ASSET_BY_NO.set(no,m); }
+  if(rec.fields.uniza) ASSET_BY_UNIZA.set(String(rec.fields.uniza).toUpperCase(),ASSET_BY_NO.get(no));
+  let o=auditMap.get(no)||{asset:no,edits:{}};
+  o.isNew=true; o.checked=true; o.checkedBy=o.checkedBy||rec.user; o.checkedAt=o.checkedAt||rec.deviceTime;
+  o.note=rec.fields.note||o.note||''; o.photos=rec.photos||{}; o.photoTiada=rec.photoTiada||{};
+  o.user=rec.user; o.deviceTime=rec.deviceTime;
+  o.dataStatus=rec.dataStatus;
+  auditMap.set(no,o);
+  for(const k in (rec.photos||{})){ if(rec.photos[k]) setPhotoCache(no,k,{status:'confirmed',url:rec.photos[k]}); }
+}
+function requiredPhotoMissing(no){
+  const o=auditMap.get(no)||{}, ph=photoCache.get(no)||{}, tiada=o.photoTiada||{};
+  const has=k=>(o.photos&&o.photos[k])||(ph[k]&&(ph[k].url||ph[k].thumb));
+  if(!has('aset')) return PHOTO_KINDS.aset.label;
+  if(!has('nameplate')&&!tiada.nameplate) return PHOTO_KINDS.nameplate.label;
+  if(!has('keseluruhan')) return PHOTO_KINDS.keseluruhan.label;
+  return '';
+}
+function updateRegPhotoStat(no){
+  const el=$('#rPhotoStat'); if(!el) return;
+  const o=auditMap.get(no)||{}, ph=photoCache.get(no)||{}, tiada=o.photoTiada||{};
+  const has=k=>(o.photos&&o.photos[k])||(ph[k]&&(ph[k].url||ph[k].thumb));
+  el.innerHTML=[
+    (has('aset')?'✅':'⬜')+' No.Aset',
+    (has('nameplate')?'✅':(tiada.nameplate?'➖':'⬜'))+' Nameplate',
+    (has('keseluruhan')?'✅':'⬜')+' Keseluruhan'
+  ].join(' &nbsp; ');
+}
+async function saveNewAsset(){
+  const no=$('#rf-asset').value.trim().toUpperCase();
+  if(!isValidAssetNo(no)){ toast('No. Aset tidak sah. Format: SZA#####F','err'); $('#rf-asset').focus(); return; }
+  if(ASSET_BY_NO.has(no)&&!NEW_ASSETS.has(no)){ toast('⚠️ No. Aset ini sudah wujud dalam pangkalan data!','err'); return; }
+  ensureDraft(no);
+  const rec=NEW_ASSETS.get(no);
+  rec.fields={ uniza:$('#rf-uniza').value.trim(), location:$('#rf-location').value.trim(),
+    brand:$('#rf-brand').value.trim(), model:$('#rf-model').value.trim(),
+    serial:$('#rf-serial').value.trim(), note:$('#rf-note').value.trim() };
+  const miss=requiredPhotoMissing(no);
+  if(miss){ toast('Gambar wajib belum lengkap: '+miss,'err'); openPhotoWizard(no,true); return; }
+  rec.user=getUser(); rec.deviceTime=nowISO(); rec.checked=true; rec.dataStatus='local';
+  NEW_ASSETS.set(no,rec); ensureNewInIndex(no); await dbPut('newassets',rec);
+  closeOverlay('regModal');
+  curQuery=no; $('#search').value=no; $('#clrBtn').style.display='block';
+  curFilter='all'; $$('.chip').forEach(x=>x.classList.toggle('on',x.dataset.f==='all'));
+  expandedAsset=no; render(); updateSummary();
+  toast('✅ Aset baharu didaftar: '+no,'ok');
+  pushNewAsset(no);
+}
+
+/* ============================================================
    Wizard Gambar (3 slot utama + sehingga 2 tambahan)
    ============================================================ */
-function openPhotoWizard(no){
+function openPhotoWizard(no,required){
   if(!getUser()){ openName(); return; }
-  wizardAsset=no; wizardSkip=new Set();
+  wizardAsset=no; wizardSkip=new Set(); wizardRequired=!!required;
   // dedah slot tambahan yang sudah ada gambar
   const o=auditMap.get(no)||{}, ph=photoCache.get(no)||{};
   const has=k=>(o.photos&&o.photos[k])||(ph[k]&&(ph[k].url||ph[k].thumb));
@@ -853,7 +1009,10 @@ function wizardKinds(no){
 function renderWizard(no){
   if(wizardAsset!==no) return;
   const kinds=wizardKinds(no);
-  let h=`<div style="font-size:12.5px;color:var(--muted);margin-bottom:12px">Ambil/pilih gambar ikut slot. Tekan <b>Skip</b> jika tak perlu. Boleh ganti atau buang bila-bila.</div>`;
+  let h=`<div style="font-size:12.5px;color:var(--muted);margin-bottom:12px">${
+    wizardRequired
+      ? 'Slot <b style="color:var(--red)">*</b> wajib diisi. Nameplate boleh tekan <b>Tiada</b> jika aset memang tiada nameplate.'
+      : 'Ambil/pilih gambar ikut slot. Tekan <b>Skip</b> jika tak perlu. Boleh ganti atau buang bila-bila.'}</div>`;
   h+=kinds.map(k=>slotHTML(no,k)).join('');
   const canAdd=kinds.length<5;
   h+=`<div class="wz-foot">
@@ -861,7 +1020,11 @@ function renderWizard(no){
       <button class="btn-primary" id="wzDone" style="margin-top:0">✓ Selesai</button>
     </div>`;
   $('#photoBody').innerHTML=h;
-  $('#wzDone').onclick=()=>{ closeOverlay('photoModal'); wizardAsset=null; rerenderCard(no); };
+  $('#wzDone').onclick=()=>{
+    if(wizardRequired){ const miss=requiredPhotoMissing(no); if(miss){ toast('Gambar wajib belum lengkap: '+miss,'err'); return; } }
+    closeOverlay('photoModal'); wizardAsset=null; rerenderCard(no);
+    if($('#regModal').classList.contains('show')) updateRegPhotoStat(no);
+  };
   if($('#wzAdd')) $('#wzAdd').onclick=()=>{ wizardReveal=Math.min(2,wizardKinds(no).length-MAIN_KINDS.length+1); renderWizard(no); };
 }
 
@@ -871,6 +1034,8 @@ function slotHTML(no,kind){
   const url=(o.photos&&o.photos[kind])||ph.url||'';
   const thumb=ph.thumb||'';
   const skipped=wizardSkip.has(kind);
+  const tiada=(o.photoTiada||{})[kind];
+  const req=wizardRequired && MAIN_KINDS.indexOf(kind)>-1;
   let body;
   if(ph.status==='sending'){
     body=`<div class="wz-body"><div class="wz-sending"><span class="prog indet" style="position:relative;display:inline-block;width:120px;height:3px;background:#bae6fd"></span> Menghantar…</div></div>`;
@@ -885,8 +1050,17 @@ function slotHTML(no,kind){
           </div>
         </div>
       </div>`;
+  } else if(tiada){
+    body=`<div class="wz-body"><div class="wz-skipped">➖ Tiada nameplate <button class="wz-btn" data-pcap="${kind}">Ambil gambar</button></div></div>`;
   } else if(skipped){
     body=`<div class="wz-body"><div class="wz-skipped">↷ Dilangkau <button class="wz-btn" data-pcap="${kind}">Ambil sekarang</button></div></div>`;
+  } else if(req && kind==='nameplate'){
+    body=`<div class="wz-body">
+        <button class="wz-take" data-pcap="${kind}">📸 Ambil / Pilih</button>
+        <button class="wz-skip" data-ptiada="${kind}">Tiada</button>
+      </div>`;
+  } else if(req){
+    body=`<div class="wz-body"><button class="wz-take" data-pcap="${kind}" style="flex:1">📸 Ambil / Pilih Gambar</button></div>`;
   } else {
     body=`<div class="wz-body">
         <button class="wz-take" data-pcap="${kind}">📸 Ambil / Pilih Gambar</button>
@@ -895,7 +1069,7 @@ function slotHTML(no,kind){
   }
   return `<div class="wz-slot${skipped?' isskip':''}" data-slot="${kind}">
       <div class="wz-h"><span class="wz-n">${meta.n}</span>
-        <div class="wz-lbl"><b>${esc(meta.label)}</b><span>${esc(meta.hint)}</span></div></div>
+        <div class="wz-lbl"><b>${esc(meta.label)}${req?' <span style="color:var(--red)">*</span>':''}</b><span>${esc(meta.hint)}</span></div></div>
       ${body}</div>`;
 }
 
@@ -923,23 +1097,40 @@ async function handlePhoto(no,kind,file){
     const id=await dbPut('photos',rec); rec.id=id;
     setPhotoCache(no,kind,{thumb,status:'local',url:''});
     let o=await getOrInitAudit(no); o.user=getUser(); o.updatedAt=nowISO();
+    if(o.photoTiada) delete o.photoTiada[kind];   // batalkan 'Tiada' jika ada
     if(o.dataStatus==='confirmed') o.dataStatus='local';
-    auditMap.set(no,o); await dbPut('audits',o);
+    auditMap.set(no,o); await persistAudit(no,o);
     if(wizardAsset===no) renderWizard(no);
+    if($('#regModal').classList.contains('show')) updateRegPhotoStat(no);
     rerenderCard(no); updateSummary();
     toast('📷 '+PHOTO_KINDS[kind].label+' disimpan, sedang dihantar…');
     pushPhoto(id);
   }catch(err){ toast('Gagal memproses gambar: '+err.message,'err'); }
 }
 
+async function markTiada(no,kind){
+  let o=await getOrInitAudit(no);
+  o.photoTiada=o.photoTiada||{}; o.photoTiada[kind]=true;
+  const photos=await dbAll('photos');
+  for(const p of photos){ if(p.asset===no&&p.kind===kind) await dbDel('photos',p.id); }
+  if(o.photos) delete o.photos[kind];
+  const c=photoCache.get(no)||{}; delete c[kind]; photoCache.set(no,c);
+  o.updatedAt=nowISO(); auditMap.set(no,o); await persistAudit(no,o);
+  if(getEndpoint()) apiPost('photo',{asset:no,kind,tiada:true,user:getUser(),sheet:isNewAsset(no)?'baharu':'audit'}).catch(()=>{});
+  if(wizardAsset===no) renderWizard(no);
+  if($('#regModal').classList.contains('show')) updateRegPhotoStat(no);
+  rerenderCard(no);
+}
+
 async function removePhoto(no,kind){
   if(!confirm('Buang '+PHOTO_KINDS[kind].label+'?')) return;
   const photos=await dbAll('photos');
   for(const p of photos){ if(p.asset===no&&p.kind===kind) await dbDel('photos',p.id); }
-  let o=auditMap.get(no); if(o&&o.photos){ delete o.photos[kind]; o.updatedAt=nowISO(); auditMap.set(no,o); await dbPut('audits',o); }
+  let o=auditMap.get(no); if(o&&o.photos){ delete o.photos[kind]; if(o.photoTiada)delete o.photoTiada[kind]; o.updatedAt=nowISO(); auditMap.set(no,o); await persistAudit(no,o); }
   const c=photoCache.get(no)||{}; delete c[kind]; photoCache.set(no,c);
-  if(getEndpoint()) apiPost('photo',{asset:no,kind,remove:true,user:getUser()}).catch(()=>{});
+  if(getEndpoint()) apiPost('photo',{asset:no,kind,remove:true,user:getUser(),sheet:isNewAsset(no)?'baharu':'audit'}).catch(()=>{});
   if(wizardAsset===no) renderWizard(no);
+  if($('#regModal').classList.contains('show')) updateRegPhotoStat(no);
   rerenderCard(no); toast('🗑️ '+PHOTO_KINDS[kind].label+' dibuang');
 }
 
@@ -1040,6 +1231,7 @@ function buildUpsertPayload(o){
 let syncing=new Set();
 async function pushAudit(no){
   if(!getEndpoint()) return;
+  if(isNewAsset(no)) return;          // aset baharu guna pushNewAsset
   if(syncing.has(no)) return; syncing.add(no);
   let o=auditMap.get(no); if(!o){syncing.delete(no);return;}
   o.dataStatus='sending'; await dbPut('audits',o); rerenderCard(no); updateSummary();
@@ -1066,21 +1258,23 @@ async function pushPhoto(id){
   rerenderCard(rec.asset);
   try{
     const b64=await blobToB64(rec.blob);
+    const isNew=isNewAsset(rec.asset);
     const r=await apiPost('photo',{
       asset:rec.asset, kind:rec.kind, label:rec.label||PHOTO_KINDS[rec.kind].label,
       filename:`${rec.asset}_${rec.kind}_${Date.now()}.jpg`,
-      mimeType:'image/jpeg', dataB64:b64, user:rec.user||getUser()
+      mimeType:'image/jpeg', dataB64:b64, user:rec.user||getUser(),
+      sheet: isNew?'baharu':'audit'
     });
     let url = (r&&r.url)||'';
     if(!url){ // cuba dapatkan via read-back
-      const row=await verifyAsset(rec.asset);
+      const row=isNew?await verifyNew(rec.asset):await verifyAsset(rec.asset);
       if(row) url = (row.photos&&row.photos[rec.kind])||row[PHOTO_COL[rec.kind]]||'';
     }
     if(url){
       let o=await getOrInitAudit(rec.asset);
       o.photos=o.photos||{}; o.photos[rec.kind]=url;
       o.user=getUser(); o.updatedAt=nowISO();
-      auditMap.set(rec.asset,o); await dbPut('audits',o);
+      auditMap.set(rec.asset,o); await persistAudit(rec.asset,o);
       setPhotoCache(rec.asset,rec.kind,{status:'confirmed',url,thumb:rec.thumb});
       rec.status='confirmed'; await dbPut('photos',rec);
       if(wizardAsset===rec.asset) renderWizard(rec.asset);
@@ -1103,11 +1297,58 @@ async function pushPhoto(id){
 async function syncAll(manual){
   if(!getEndpoint()){ if(manual){toast('⚠️ Tetapkan URL Pengurusan dahulu','err'); openSettings();} return; }
   let n=0;
-  for(const [no,o] of auditMap){ if(o.dataStatus==='local'||o.dataStatus==='failed'){ n++; pushAudit(no); } }
+  for(const [no,o] of auditMap){
+    if(o.dataStatus==='local'||o.dataStatus==='failed'){ n++; isNewAsset(no)?pushNewAsset(no):pushAudit(no); }
+  }
   const photos=await dbAll('photos');
   for(const p of photos){ if(p.status==='local'||p.status==='failed'){ n++; pushPhoto(p.id); } }
-  await pullRemote(true);   // tarik audit pengguna lain dari Sheet pusat
+  await pullRemote(true);       // tarik audit pengguna lain (tab Audit)
+  await pullNewAssets(true);    // tarik aset baharu pengguna lain (tab Aset Baharu)
   if(manual) toast(n?`⟳ Menyegerak ${n} rekod & menarik data pusat…`:'⬇️ Data pusat dikemas kini','ok');
+}
+
+/* ----- PUSH aset baharu (tab "Aset Baharu") ----- */
+async function verifyNew(no){
+  try{ const r=await apiGet({action:'getnew',asset:no}); return (r&&r.ok&&r.found)?r.row:null; }
+  catch(e){ return null; }
+}
+async function pushNewAsset(no){
+  if(!getEndpoint()) return;
+  const rec=NEW_ASSETS.get(no); if(!rec) return;
+  let o=auditMap.get(no);
+  rec.dataStatus='sending'; if(o)o.dataStatus='sending';
+  await dbPut('newassets',rec); rerenderCard(no); updateSummary();
+  const f=rec.fields||{};
+  const r=await apiPost('newasset',{
+    asset:no, uniza:f.uniza||'', location:f.location||'', brand:f.brand||'',
+    model:f.model||'', serial:f.serial||'', note:f.note||'',
+    checked:true, checkedBy:rec.user, user:rec.user, deviceTime:rec.deviceTime
+  });
+  const row=await verifyNew(no);
+  let st = row ? 'confirmed' : (r&&r.ok===true&&!r._unreadable ? 'confirmed' : 'failed');
+  rec.dataStatus=st; o=auditMap.get(no); if(o){o.dataStatus=st; auditMap.set(no,o);}
+  NEW_ASSETS.set(no,rec); await dbPut('newassets',rec);
+  rerenderCard(no); updateSummary();
+}
+
+/* ----- PULL aset baharu ----- */
+async function pullNewAssets(silent){
+  if(!getEndpoint()) return;
+  let r; try{ r=await apiGet({action:'allnew'}); }catch(e){ return; }
+  if(!r||!r.ok||!Array.isArray(r.rows)) return;
+  let changed=0;
+  for(const row of r.rows){
+    const no=String(row.asset||row['ASSET NO']||'').trim().toUpperCase(); if(!no) continue;
+    const local=NEW_ASSETS.get(no);
+    if(local && (local.dataStatus==='local'||local.dataStatus==='sending'||local.dataStatus==='draft')) continue;
+    const rec={asset:no, dataStatus:'confirmed', remote:true, checked:true,
+      user:row.user||row['User']||'', deviceTime:row['Masa Peranti']||'',
+      fields:{ uniza:row.uniza||row['NO. UNIZA']||'', location:row['Lokasi']||'',
+        brand:row['Jenama']||'', model:row['Model']||'', serial:row['No. Serial']||'', note:row['Catatan']||'' },
+      photos:(row.photos||{}), photoTiada:{} };
+    NEW_ASSETS.set(no,rec); await dbPut('newassets',rec); ensureNewInIndex(no); changed++;
+  }
+  if(changed){ updateSummary(); render(); }
 }
 
 /* ----- PULL: tarik semua rekod audit dari Sheet pusat, gabung ke peranti ----- */
@@ -1160,6 +1401,9 @@ async function pullRemote(silent){
 async function loadLocal(){
   const audits=await dbAll('audits');
   for(const o of audits) auditMap.set(o.asset,o);
+  // aset baharu (didaftar pengguna) -> masuk indeks supaya boleh dicari & dipapar
+  const news=await dbAll('newassets');
+  for(const rec of news){ NEW_ASSETS.set(rec.asset,rec); ensureNewInIndex(rec.asset); }
   const photos=await dbAll('photos');
   for(const p of photos){
     const o=auditMap.get(p.asset)||{};
@@ -1211,6 +1455,7 @@ $('#photoBody').addEventListener('click',e=>{
   const t=e.target; if(!wizardAsset) return;
   if(t.closest('[data-pcap]')){ triggerPhoto(wizardAsset,t.closest('[data-pcap]').dataset.pcap); return; }
   if(t.closest('[data-pdel]')){ removePhoto(wizardAsset,t.closest('[data-pdel]').dataset.pdel); return; }
+  if(t.closest('[data-ptiada]')){ markTiada(wizardAsset,t.closest('[data-ptiada]').dataset.ptiada); return; }
   if(t.closest('[data-pskip]')){ wizardSkip.add(t.closest('[data-pskip]').dataset.pskip); renderWizard(wizardAsset); return; }
   if(t.closest('[data-view]')){ const u=t.closest('[data-view]').dataset.view; if(u) window.open(u,'_blank','noopener'); return; }
 });
@@ -1270,12 +1515,24 @@ $('#setSave').onclick=()=>{
   const nm=$('#setName').value.trim(), ep=$('#setEndpoint').value.trim();
   if(nm) localStorage.setItem('auditor_name',nm);
   localStorage.setItem('endpoint',ep);
-  closeOverlay('settingsModal'); updateEndpointWarn(); toast('⚙️ Tetapan disimpan','ok');
+  closeOverlay('settingsModal'); updateEndpointWarn(); updateNet(); toast('⚙️ Tetapan disimpan','ok');
 };
 $('#setSyncAll').onclick=()=>{ closeOverlay('settingsModal'); syncAll(true); };
 $('#btnSync').onclick=()=>syncAll(true);
 
 function updateEndpointWarn(){ $('#endpointWarn').classList.toggle('hide',!!getEndpoint()); }
+
+/* ---- Penunjuk Live / Lokal / Offline ---- */
+function updateNet(){
+  const el=$('#netPill'); if(!el) return;
+  const on=navigator.onLine, ep=!!getEndpoint();
+  el.classList.remove('live','local','off');
+  if(!on){ el.textContent='⚪ Offline'; el.classList.add('off'); }
+  else if(!ep){ el.textContent='🟡 Lokal'; el.classList.add('local'); }
+  else { el.textContent='🟢 Live'; el.classList.add('live'); }
+}
+window.addEventListener('online',updateNet);
+window.addEventListener('offline',updateNet);
 
 /* ============================================================
    Scanner (BarcodeDetector native -> fallback ZXing)
@@ -1395,7 +1652,7 @@ $('#updBtn').onclick=()=>{ if(swReg&&swReg.waiting) swReg.waiting.postMessage('s
 (async function boot(){
   // 1) Papar data SEGERA — jangan tunggu IndexedDB (file:// boleh sekat/gantung IDB).
   if(!initData()) return;
-  updateEndpointWarn(); render();
+  updateEndpointWarn(); updateNet(); render();
 
   // 2) IndexedDB best-effort dengan had masa, supaya UI tak tergantung.
   try{
