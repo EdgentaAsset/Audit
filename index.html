@@ -154,6 +154,52 @@ main{padding:8px 12px 120px}
 .photobtn .prog.indet{width:35%;animation:indet 1.1s ease-in-out infinite}
 @keyframes indet{0%{left:-35%}100%{left:100%}}
 
+/* ===== Gambar: cip-lihat + butang urus ===== */
+.pchips{display:flex;flex-wrap:wrap;gap:7px;margin-bottom:10px}
+.pchip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;font-weight:700;
+  background:#eff6ff;color:var(--blue);border:1px solid #bfdbfe;border-radius:9px;padding:6px 10px}
+.pchip.send{background:#e0f2fe;color:#0369a1;border-color:#bae6fd}
+.pchip.fail{background:var(--red-bg);color:var(--red);border-color:#fecaca}
+.wz-none{font-size:12.5px;color:#94a3b8;font-weight:600;margin-bottom:10px}
+.btn-photo{display:flex;width:100%;align-items:center;justify-content:center;gap:8px;
+  background:#f0fdf4;color:#15803d;border:1.5px dashed #bbf7d0;border-radius:12px;padding:12px;font-size:13px;font-weight:800}
+.btn-photo:active{transform:scale(.99)}
+
+/* ===== Wizard slot ===== */
+.wz-slot{border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:11px;background:#fcfdff}
+.wz-slot.isskip{opacity:.7}
+.wz-h{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.wz-n{width:24px;height:24px;flex:0 0 auto;border-radius:50%;background:var(--blue);color:#fff;
+  font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center}
+.wz-lbl b{display:block;font-size:13.5px;color:var(--ink);font-weight:800}
+.wz-lbl span{display:block;font-size:11px;color:var(--label);font-weight:600}
+.wz-body{display:flex;gap:9px}
+.wz-take{flex:1;background:var(--blue);color:#fff;border-radius:11px;padding:12px;font-size:13px;font-weight:800}
+.wz-skip{background:#f1f5f9;color:#64748b;border-radius:11px;padding:12px 16px;font-size:13px;font-weight:800}
+.wz-skipped{flex:1;display:flex;align-items:center;justify-content:space-between;gap:8px;
+  font-size:12.5px;font-weight:700;color:#94a3b8}
+.wz-sending{flex:1;display:flex;align-items:center;gap:9px;font-size:12.5px;font-weight:700;color:#0369a1}
+.wz-sending .prog{border-radius:3px;overflow:hidden}
+.wz-body.has{align-items:center}
+.wz-thumb{width:72px;height:72px;flex:0 0 auto;border-radius:11px;object-fit:cover;background:#e2e8f0;border:1px solid var(--line)}
+.wz-thumb.noimg{display:flex;align-items:center;justify-content:center;font-size:26px}
+.wz-side{flex:1;display:flex;flex-direction:column;gap:8px}
+.wz-badge{font-size:11px;font-weight:800;align-self:flex-start;border-radius:7px;padding:4px 8px;background:var(--green-bg);color:var(--green)}
+.wz-badge.f{background:var(--red-bg);color:var(--red)}
+.wz-btns{display:flex;gap:7px}
+.wz-btn{background:#eff6ff;color:var(--blue);border:1px solid #bfdbfe;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:800}
+.wz-btn.del{background:var(--red-bg);color:var(--red);border-color:#fecaca}
+.wz-foot{display:flex;gap:9px;margin-top:4px}
+.wz-add{flex:1;background:#fff;color:var(--blue);border:1.5px solid var(--blue-50);border-radius:12px;padding:13px;font-size:13px;font-weight:800}
+
+/* ===== Input + butang imbas (edit UNIZA) ===== */
+.inp-scan{display:flex;gap:8px}
+.inp-scan input{flex:1;border:1.5px solid var(--line);border-radius:11px;padding:11px 12px;color:var(--ink);font-weight:600;outline:0}
+.inp-scan input:focus{border-color:var(--blue)}
+.scan-mini{width:46px;flex:0 0 auto;border-radius:11px;background:var(--blue);color:#fff;
+  display:flex;align-items:center;justify-content:center}
+.scan-mini:active{transform:scale(.95)}
+
 /* ===== FAB ===== */
 .fab{position:fixed;right:16px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:45;
   display:none;align-items:center;gap:10px}
@@ -333,6 +379,13 @@ main{padding:8px 12px 120px}
   </div>
 </div>
 
+<div class="overlay" id="photoModal">
+  <div class="sheet">
+    <div class="sheet-h"><b id="photoTitle">📸 Gambar</b><button class="x" data-close>✕</button></div>
+    <div class="sheet-b" id="photoBody"></div>
+  </div>
+</div>
+
 <div class="overlay" id="settingsModal">
   <div class="sheet">
     <div class="sheet-h"><b>⚙️ Tetapan</b><button class="x" data-close>✕</button></div>
@@ -404,6 +457,20 @@ let curFilter="all";
 let curQuery="";
 let renderCount=CONFIG.RENDER_LIMIT;
 let pendingPhotoTarget=null;   // {asset, kind}
+
+/* ---- Slot gambar (3 utama + 2 tambahan = maks 5) ---- */
+const PHOTO_KINDS={
+  aset:        {label:'Gambar No. Aset',  hint:'label / QR / barcode',    n:1},
+  nameplate:   {label:'Gambar Nameplate', hint:'model / serial / brand',  n:2},
+  keseluruhan: {label:'Gambar Keseluruhan',hint:'aset penuh',             n:3},
+  tambahan1:   {label:'Tambahan 1',       hint:'gambar tambahan',         n:4},
+  tambahan2:   {label:'Tambahan 2',       hint:'gambar tambahan',         n:5}
+};
+const MAIN_KINDS=['aset','nameplate','keseluruhan'];
+const EXTRA_KINDS=['tambahan1','tambahan2'];
+let wizardAsset=null;          // aset yang sedang diurus dlm wizard gambar
+let wizardReveal=0;            // bil. slot tambahan yang didedahkan (0-2)
+let wizardSkip=new Set();      // slot yang dilangkau (UI sahaja)
 
 function getEndpoint(){ return (localStorage.getItem('endpoint')||CONFIG.ENDPOINT||"").trim(); }
 function getUser(){ return localStorage.getItem('auditor_name')||""; }
@@ -524,7 +591,6 @@ function cardHTML(a){
 function detailsHTML(a){
   const no=a[F.asset], o=auditMap.get(no), checked=o&&o.checked;
   const sum=ppmSummary(no);
-  const ph=photoCache.get(no)||{};
   return `
     <div class="sec">
       <div class="sec-h"><span class="ic">📍</span> Lokasi & Jabatan</div>
@@ -563,27 +629,28 @@ function detailsHTML(a){
       <button class="btn btn-edit" data-edit="${esc(no)}">✏️ Edit</button>
     </div>
 
-    <div class="photos">
-      ${photoBtnHTML(no,'asset',(o&&o.photoAssetUrl)||a[F.g1],ph.asset)}
-      ${photoBtnHTML(no,'plate',(o&&o.photoPlateUrl)||a[F.g2],ph.plate)}
-    </div>`;
+    ${photosSectionHTML(no,a)}`;
 }
 
-function photoBtnHTML(no,kind,masterLink,local){
-  const label = kind==='asset'?'Gambar Aset':'Gambar Plate';
-  // status tempatan (sedang upload / disahkan)
-  if(local&&local.status==='sending'){
-    return `<button class="photobtn uploading" data-photo="${esc(no)}" data-kind="${kind}">
-      <span class="pi">⏳</span> Menghantar… <span class="prog indet"></span></button>`;
+/* Bahagian Gambar pada kad: cip-lihat utk gambar sedia ada + butang Urus Gambar */
+function photosSectionHTML(no,a){
+  const o=auditMap.get(no)||{}; const photos=o.photos||{}; const pc=photoCache.get(no)||{};
+  const chips=[];
+  if(a[F.g1]) chips.push(viewChip('Gambar Asal (Aset)',a[F.g1]));
+  if(a[F.g2]) chips.push(viewChip('Gambar Asal (Plate)',a[F.g2]));
+  for(const k of MAIN_KINDS.concat(EXTRA_KINDS)){
+    const ph=pc[k]||{}, url=photos[k]||ph.url;
+    if(ph.status==='sending') chips.push(`<span class="pchip send">⏳ ${esc(PHOTO_KINDS[k].label)}</span>`);
+    else if(ph.status==='failed') chips.push(`<span class="pchip fail" data-photomgr="${esc(no)}">⚠️ ${esc(PHOTO_KINDS[k].label)}</span>`);
+    else if(url) chips.push(viewChip(PHOTO_KINDS[k].label,url));
   }
-  const url = (local&&local.url) || masterLink;
-  if(url){
-    return `<button class="photobtn has" data-view="${esc(url)}">
-      <span class="pi">🖼️</span> ${label}${local&&local.status==='failed'?' ⚠️':''}</button>`;
-  }
-  return `<button class="photobtn empty" data-photo="${esc(no)}" data-kind="${kind}">
-    <span class="pi">📸</span> Upload ${label}</button>`;
+  return `<div class="sec">
+      <div class="sec-h"><span class="ic">📷</span> Gambar</div>
+      ${chips.length?`<div class="pchips">${chips.join('')}</div>`:'<div class="wz-none">Belum ada gambar audit dimuat naik.</div>'}
+      <button class="btn-photo" data-photomgr="${esc(no)}">📸 Upload / Urus Gambar</button>
+    </div>`;
 }
+function viewChip(label,url){ return `<span class="pchip" data-view="${esc(url)}">🖼️ ${esc(label)}</span>`; }
 
 /* ----- Senarai utama ----- */
 function getResults(){
@@ -674,9 +741,10 @@ async function getOrInitAudit(no){
   const a=ASSET_BY_NO.get(no.toUpperCase());
   if(!o){
     o={asset:no, uniza:(a?a[F.uniza]:'')||'', user:getUser(), deviceTime:nowISO(),
-       checked:false, edits:{}, note:'', photoAssetUrl:'', photoPlateUrl:'',
+       checked:false, edits:{}, note:'', photos:{},
        dataStatus:'local', updatedAt:nowISO()};
   }
+  if(!o.photos) o.photos={};
   return o;
 }
 
@@ -693,13 +761,23 @@ async function doTick(no){
 function openEdit(no){
   if(!getUser()){ openName(); return; }
   const a=ASSET_BY_NO.get(no.toUpperCase()); if(!a) return;
+  // Medan: No. UNIZA (+imbas), Lokasi, Jenama, Model, No. Serial
   const fields=[
-    ['uniza','No. UNIZA'],['locno','No. Lokasi'],['locname','Nama Lokasi'],
-    ['brand','Jenama'],['model','Model'],['serial','No. Serial'],
-    ['make','Buatan'],['manuf','Pengilang']
+    ['locno','Lokasi'],['brand','Jenama'],['model','Model'],['serial','No. Serial']
   ];
   const o=auditMap.get(no)||{edits:{},note:''};
-  let h=`<div style="font-size:13px;color:var(--muted);margin-bottom:14px">Aset <b style="color:var(--blue)">${esc(no)}</b> — kemas kini medan yang perlu dibetulkan.</div>`;
+  let h=`<div style="font-size:13px;color:var(--muted);margin-bottom:14px">Aset <b style="color:var(--blue)">${esc(no)}</b> — kemas kini medan yang perlu dibetulkan. <b style="color:var(--green)">Menyimpan = auto-tanda Telah Diperiksa.</b></div>`;
+  // No. UNIZA + butang imbas barcode
+  const uMaster=a[F.uniza]||'';
+  h+=`<div class="formrow"><label>No. UNIZA</label>
+    <div class="inp-scan">
+      <input data-ef="uniza" id="ef-uniza" value="${esc(effVal(a,'uniza'))}" inputmode="text" placeholder="Imbas atau taip…">
+      <button type="button" class="scan-mini" id="scanUniza" title="Imbas barcode">
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+          stroke-linecap="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M3 12h18"/></svg>
+      </button>
+    </div>
+    ${uMaster?`<div class="orig">Asal: ${esc(uMaster)}</div>`:''}</div>`;
   for(const [k,lbl] of fields){
     const cur=effVal(a,k), master=a[F[k]]||'';
     h+=`<div class="formrow"><label>${esc(lbl)}</label>
@@ -707,10 +785,14 @@ function openEdit(no){
       ${master?`<div class="orig">Asal: ${esc(master)}</div>`:''}</div>`;
   }
   h+=`<div class="formrow"><label>Catatan</label><textarea data-ef="note" placeholder="Catatan audit (jika ada)…">${esc(o.note||'')}</textarea></div>`;
-  h+=`<button class="btn-primary" id="editSave">💾 Simpan Pembetulan</button>`;
+  h+=`<div class="formrow"><label>Gambar</label>
+    <button type="button" class="btn-photo" id="editPhoto">📸 Upload / Urus Gambar (sehingga 5)</button></div>`;
+  h+=`<button class="btn-primary" id="editSave">💾 Simpan & Tandakan Diperiksa</button>`;
   if(auditMap.has(no)) h+=`<button class="btn-ghost btn-danger" id="editDel">🗑️ Padam rekod audit</button>`;
   $('#editBody').innerHTML=h;
   $('#editSave').onclick=()=>saveEdit(no);
+  $('#scanUniza').onclick=()=>openScanner('capture',val=>{ $('#ef-uniza').value=val; toast('Barcode: '+val,'ok'); });
+  $('#editPhoto').onclick=()=>openPhotoWizard(no);
   if($('#editDel')) $('#editDel').onclick=()=>delAudit(no);
   showOverlay('editModal');
 }
@@ -726,10 +808,12 @@ async function saveEdit(no){
     if(v!==master && v!=='') o.edits[k]=v; else delete o.edits[k];
   });
   if(o.edits.uniza) o.uniza=o.edits.uniza;
+  // Part 0: edit = auto-sahkan "Telah Diperiksa"
+  o.checked=true; o.checkedBy=getUser(); o.checkedAt=nowISO();
   o.user=getUser(); o.deviceTime=nowISO(); o.dataStatus='local'; o.updatedAt=nowISO();
   auditMap.set(no,o); await dbPut('audits',o);
   closeOverlay('editModal'); rerenderCard(no); updateSummary();
-  toast('💾 Pembetulan disimpan','ok'); pushAudit(no);
+  toast('💾 Disimpan & ditanda Telah Diperiksa','ok'); pushAudit(no);
 }
 
 async function delAudit(no){
@@ -741,7 +825,81 @@ async function delAudit(no){
   toast('🗑️ Rekod audit dipadam');
 }
 
-/* ---- Photo ---- */
+/* ============================================================
+   Wizard Gambar (3 slot utama + sehingga 2 tambahan)
+   ============================================================ */
+function openPhotoWizard(no){
+  if(!getUser()){ openName(); return; }
+  wizardAsset=no; wizardSkip=new Set();
+  // dedah slot tambahan yang sudah ada gambar
+  const o=auditMap.get(no)||{}, ph=photoCache.get(no)||{};
+  const has=k=>(o.photos&&o.photos[k])||(ph[k]&&(ph[k].url||ph[k].thumb));
+  wizardReveal=0;
+  if(has('tambahan1')) wizardReveal=1;
+  if(has('tambahan2')) wizardReveal=2;
+  $('#photoTitle').textContent='📸 Gambar — '+no;
+  renderWizard(no); showOverlay('photoModal');
+}
+
+function wizardKinds(no){
+  const o=auditMap.get(no)||{}, ph=photoCache.get(no)||{};
+  const has=k=>(o.photos&&o.photos[k])||(ph[k]&&(ph[k].url||ph[k].thumb));
+  const kinds=MAIN_KINDS.slice();
+  if(has('tambahan1')||wizardReveal>=1) kinds.push('tambahan1');
+  if(has('tambahan2')||wizardReveal>=2) kinds.push('tambahan2');
+  return kinds;
+}
+
+function renderWizard(no){
+  if(wizardAsset!==no) return;
+  const kinds=wizardKinds(no);
+  let h=`<div style="font-size:12.5px;color:var(--muted);margin-bottom:12px">Ambil/pilih gambar ikut slot. Tekan <b>Skip</b> jika tak perlu. Boleh ganti atau buang bila-bila.</div>`;
+  h+=kinds.map(k=>slotHTML(no,k)).join('');
+  const canAdd=kinds.length<5;
+  h+=`<div class="wz-foot">
+      ${canAdd?`<button class="wz-add" id="wzAdd">＋ Tambah Gambar</button>`:''}
+      <button class="btn-primary" id="wzDone" style="margin-top:0">✓ Selesai</button>
+    </div>`;
+  $('#photoBody').innerHTML=h;
+  $('#wzDone').onclick=()=>{ closeOverlay('photoModal'); wizardAsset=null; rerenderCard(no); };
+  if($('#wzAdd')) $('#wzAdd').onclick=()=>{ wizardReveal=Math.min(2,wizardKinds(no).length-MAIN_KINDS.length+1); renderWizard(no); };
+}
+
+function slotHTML(no,kind){
+  const meta=PHOTO_KINDS[kind];
+  const o=auditMap.get(no)||{}, ph=(photoCache.get(no)||{})[kind]||{};
+  const url=(o.photos&&o.photos[kind])||ph.url||'';
+  const thumb=ph.thumb||'';
+  const skipped=wizardSkip.has(kind);
+  let body;
+  if(ph.status==='sending'){
+    body=`<div class="wz-body"><div class="wz-sending"><span class="prog indet" style="position:relative;display:inline-block;width:120px;height:3px;background:#bae6fd"></span> Menghantar…</div></div>`;
+  } else if(url||thumb){
+    body=`<div class="wz-body has">
+        ${thumb?`<img class="wz-thumb" src="${thumb}" data-view="${esc(url||'')}">`:`<div class="wz-thumb noimg" ${url?`data-view="${esc(url)}"`:''}>🖼️</div>`}
+        <div class="wz-side">
+          <span class="wz-badge ${ph.status==='failed'?'f':'ok'}">${ph.status==='failed'?'⚠️ Gagal — cuba ganti':(url?'✅ Tersimpan':'💾 Sedia hantar')}</span>
+          <div class="wz-btns">
+            <button class="wz-btn" data-pcap="${kind}">Ganti</button>
+            <button class="wz-btn del" data-pdel="${kind}">Buang</button>
+          </div>
+        </div>
+      </div>`;
+  } else if(skipped){
+    body=`<div class="wz-body"><div class="wz-skipped">↷ Dilangkau <button class="wz-btn" data-pcap="${kind}">Ambil sekarang</button></div></div>`;
+  } else {
+    body=`<div class="wz-body">
+        <button class="wz-take" data-pcap="${kind}">📸 Ambil / Pilih Gambar</button>
+        <button class="wz-skip" data-pskip="${kind}">Skip</button>
+      </div>`;
+  }
+  return `<div class="wz-slot${skipped?' isskip':''}" data-slot="${kind}">
+      <div class="wz-h"><span class="wz-n">${meta.n}</span>
+        <div class="wz-lbl"><b>${esc(meta.label)}</b><span>${esc(meta.hint)}</span></div></div>
+      ${body}</div>`;
+}
+
+/* ---- Tangkap / proses / buang gambar ---- */
 function triggerPhoto(no,kind){
   if(!getUser()){ openName(); return; }
   pendingPhotoTarget={asset:no,kind};
@@ -756,19 +914,33 @@ $('#fileInput').addEventListener('change',async e=>{
 
 async function handlePhoto(no,kind,file){
   try{
+    wizardSkip.delete(kind);
     const {blob,thumb}=await processImage(file);
-    // simpan ke IndexedDB (blob + thumbnail tempatan)
-    const rec={asset:no,kind,blob,thumb,status:'local',prog:0,createdAt:nowISO(),user:getUser()};
+    // ganti: buang sebarang pending lama utk slot ini
+    const olds=await dbAll('photos');
+    for(const p of olds){ if(p.asset===no&&p.kind===kind) await dbDel('photos',p.id); }
+    const rec={asset:no,kind,label:PHOTO_KINDS[kind].label,blob,thumb,status:'local',createdAt:nowISO(),user:getUser()};
     const id=await dbPut('photos',rec); rec.id=id;
-    setPhotoCache(no,kind,{thumb,status:'local'});
-    // pastikan ada audit overlay supaya muncul dalam senarai
+    setPhotoCache(no,kind,{thumb,status:'local',url:''});
     let o=await getOrInitAudit(no); o.user=getUser(); o.updatedAt=nowISO();
     if(o.dataStatus==='confirmed') o.dataStatus='local';
     auditMap.set(no,o); await dbPut('audits',o);
+    if(wizardAsset===no) renderWizard(no);
     rerenderCard(no); updateSummary();
-    toast('📷 Gambar disimpan, sedang dihantar…');
+    toast('📷 '+PHOTO_KINDS[kind].label+' disimpan, sedang dihantar…');
     pushPhoto(id);
   }catch(err){ toast('Gagal memproses gambar: '+err.message,'err'); }
+}
+
+async function removePhoto(no,kind){
+  if(!confirm('Buang '+PHOTO_KINDS[kind].label+'?')) return;
+  const photos=await dbAll('photos');
+  for(const p of photos){ if(p.asset===no&&p.kind===kind) await dbDel('photos',p.id); }
+  let o=auditMap.get(no); if(o&&o.photos){ delete o.photos[kind]; o.updatedAt=nowISO(); auditMap.set(no,o); await dbPut('audits',o); }
+  const c=photoCache.get(no)||{}; delete c[kind]; photoCache.set(no,c);
+  if(getEndpoint()) apiPost('photo',{asset:no,kind,remove:true,user:getUser()}).catch(()=>{});
+  if(wizardAsset===no) renderWizard(no);
+  rerenderCard(no); toast('🗑️ '+PHOTO_KINDS[kind].label+' dibuang');
 }
 
 function setPhotoCache(no,kind,obj){
@@ -859,9 +1031,10 @@ function buildUpsertPayload(o){
     edits:o.edits||{},
     checked:!!o.checked, checkedBy:o.checkedBy||'', checkedAt:o.checkedAt||'',
     note:o.note||'',
-    photoAssetUrl:o.photoAssetUrl||'', photoPlateUrl:o.photoPlateUrl||'',
     user:o.user||getUser(), deviceTime:o.deviceTime||nowISO()
   };
+  // Nota: gambar TIDAK dihantar dalam upsert — dikendali khas oleh tindakan 'photo'
+  // (elak tick/edit memadam link gambar pengguna lain).
 }
 
 let syncing=new Set();
@@ -883,41 +1056,46 @@ async function pushAudit(no){
   rerenderCard(no); updateSummary(); syncing.delete(no);
 }
 
+const PHOTO_COL={aset:'Gambar No. Aset',nameplate:'Gambar Nameplate',keseluruhan:'Gambar Keseluruhan',tambahan1:'Gambar Tambahan 1',tambahan2:'Gambar Tambahan 2'};
 async function pushPhoto(id){
   if(!getEndpoint()) return;
   let rec=await dbGet('photos',id); if(!rec||!rec.blob) return;
-  rec.status='sending'; rec.prog=0; await dbPut('photos',rec);
-  setPhotoCache(rec.asset,rec.kind,{status:'sending',prog:0});
+  rec.status='sending'; await dbPut('photos',rec);
+  setPhotoCache(rec.asset,rec.kind,{status:'sending',thumb:rec.thumb});
+  if(wizardAsset===rec.asset) renderWizard(rec.asset);
   rerenderCard(rec.asset);
   try{
     const b64=await blobToB64(rec.blob);
     const r=await apiPost('photo',{
-      asset:rec.asset, kind:rec.kind, filename:`${rec.asset}_${rec.kind}_${Date.now()}.jpg`,
+      asset:rec.asset, kind:rec.kind, label:rec.label||PHOTO_KINDS[rec.kind].label,
+      filename:`${rec.asset}_${rec.kind}_${Date.now()}.jpg`,
       mimeType:'image/jpeg', dataB64:b64, user:rec.user||getUser()
     });
     let url = (r&&r.url)||'';
     if(!url){ // cuba dapatkan via read-back
       const row=await verifyAsset(rec.asset);
-      if(row) url = rec.kind==='asset'?(row.photoAssetUrl||row['Link Gambar Aset']):(row.photoPlateUrl||row['Link Gambar Plate']);
+      if(row) url = (row.photos&&row.photos[rec.kind])||row[PHOTO_COL[rec.kind]]||'';
     }
     if(url){
-      // simpan link ke audit overlay
       let o=await getOrInitAudit(rec.asset);
-      if(rec.kind==='asset') o.photoAssetUrl=url; else o.photoPlateUrl=url;
+      o.photos=o.photos||{}; o.photos[rec.kind]=url;
       o.user=getUser(); o.updatedAt=nowISO();
       auditMap.set(rec.asset,o); await dbPut('audits',o);
       setPhotoCache(rec.asset,rec.kind,{status:'confirmed',url,thumb:rec.thumb});
       rec.status='confirmed'; await dbPut('photos',rec);
+      if(wizardAsset===rec.asset) renderWizard(rec.asset);
       rerenderCard(rec.asset); updateSummary();
-      toast('✅ Gambar dimuat naik','ok');
+      toast('✅ '+(PHOTO_KINDS[rec.kind].label)+' dimuat naik','ok');
     } else {
       rec.status='failed'; await dbPut('photos',rec);
       setPhotoCache(rec.asset,rec.kind,{status:'failed',thumb:rec.thumb});
+      if(wizardAsset===rec.asset) renderWizard(rec.asset);
       rerenderCard(rec.asset); toast('⚠️ Gambar gagal — akan dicuba semula','err');
     }
   }catch(err){
     rec.status='failed'; await dbPut('photos',rec);
     setPhotoCache(rec.asset,rec.kind,{status:'failed',thumb:rec.thumb});
+    if(wizardAsset===rec.asset) renderWizard(rec.asset);
     rerenderCard(rec.asset);
   }
 }
@@ -945,8 +1123,13 @@ function rowToOverlay(row){
     checkedAt: row['Masa Diperiksa']||'',
     edits: edits||{},
     note: row['Catatan']||'',
-    photoAssetUrl: row.photoAssetUrl||row['Link Gambar Aset']||'',
-    photoPlateUrl: row.photoPlateUrl||row['Link Gambar Plate']||'',
+    photos: {
+      aset:        (row.photos&&row.photos.aset)        ||row['Gambar No. Aset']    ||'',
+      nameplate:   (row.photos&&row.photos.nameplate)   ||row['Gambar Nameplate']   ||'',
+      keseluruhan: (row.photos&&row.photos.keseluruhan) ||row['Gambar Keseluruhan'] ||'',
+      tambahan1:   (row.photos&&row.photos.tambahan1)   ||row['Gambar Tambahan 1']  ||'',
+      tambahan2:   (row.photos&&row.photos.tambahan2)   ||row['Gambar Tambahan 2']  ||''
+    },
     user: row.user||row['User']||'',
     dataStatus:'confirmed', remote:true, updatedAt:nowISO()
   };
@@ -965,8 +1148,7 @@ async function pullRemote(silent){
     // Jangan timpa kerja tempatan yang belum sync (local/sending).
     if(local && (local.dataStatus==='local'||local.dataStatus==='sending')) continue;
     auditMap.set(o.asset,o); await dbPut('audits',o);
-    if(o.photoAssetUrl) setPhotoCache(o.asset,'asset',{status:'confirmed',url:o.photoAssetUrl});
-    if(o.photoPlateUrl) setPhotoCache(o.asset,'plate',{status:'confirmed',url:o.photoPlateUrl});
+    for(const k of MAIN_KINDS.concat(EXTRA_KINDS)){ if(o.photos[k]) setPhotoCache(o.asset,k,{status:'confirmed',url:o.photos[k]}); }
     changed++;
   }
   if(changed){ updateSummary(); render(); }
@@ -980,8 +1162,9 @@ async function loadLocal(){
   for(const o of audits) auditMap.set(o.asset,o);
   const photos=await dbAll('photos');
   for(const p of photos){
+    const o=auditMap.get(p.asset)||{};
     setPhotoCache(p.asset,p.kind,{thumb:p.thumb,status:p.status,
-      url:p.status==='confirmed'?((auditMap.get(p.asset)||{})[p.kind==='asset'?'photoAssetUrl':'photoPlateUrl']):null});
+      url:(o.photos&&o.photos[p.kind])||''});
   }
 }
 
@@ -1018,9 +1201,18 @@ $('#list').addEventListener('click',e=>{
   if(t.closest('[data-tick]')){ doTick(t.closest('[data-tick]').dataset.tick); return; }
   if(t.closest('[data-edit]')){ openEdit(t.closest('[data-edit]').dataset.edit); return; }
   if(t.closest('[data-ppm]')){ openPPM(t.closest('[data-ppm]').dataset.ppm); return; }
-  if(t.closest('[data-photo]')){ const b=t.closest('[data-photo]'); triggerPhoto(b.dataset.photo,b.dataset.kind); return; }
-  if(t.closest('[data-view]')){ window.open(t.closest('[data-view]').dataset.view,'_blank','noopener'); return; }
+  if(t.closest('[data-photomgr]')){ openPhotoWizard(t.closest('[data-photomgr]').dataset.photomgr); return; }
+  if(t.closest('[data-view]')){ const u=t.closest('[data-view]').dataset.view; if(u) window.open(u,'_blank','noopener'); return; }
   if(toggle&&card){ toggleCard(card.dataset.no); }
+});
+
+/* delegated clicks dalam wizard gambar */
+$('#photoBody').addEventListener('click',e=>{
+  const t=e.target; if(!wizardAsset) return;
+  if(t.closest('[data-pcap]')){ triggerPhoto(wizardAsset,t.closest('[data-pcap]').dataset.pcap); return; }
+  if(t.closest('[data-pdel]')){ removePhoto(wizardAsset,t.closest('[data-pdel]').dataset.pdel); return; }
+  if(t.closest('[data-pskip]')){ wizardSkip.add(t.closest('[data-pskip]').dataset.pskip); renderWizard(wizardAsset); return; }
+  if(t.closest('[data-view]')){ const u=t.closest('[data-view]').dataset.view; if(u) window.open(u,'_blank','noopener'); return; }
 });
 
 function toggleCard(no){
@@ -1089,12 +1281,16 @@ function updateEndpointWarn(){ $('#endpointWarn').classList.toggle('hide',!!getE
    Scanner (BarcodeDetector native -> fallback ZXing)
    ============================================================ */
 let scanStream=null, scanLoop=null, zxingReader=null, scanActive=false;
-$('#scanBtn').onclick=openScanner;
+let scanMode='search', scanCaptureCb=null;
+$('#scanBtn').onclick=()=>openScanner('search');
 $('#scanClose').onclick=closeScanner;
 
-async function openScanner(){
+async function openScanner(mode,cb){
+  scanMode=mode||'search'; scanCaptureCb=cb||null;
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
     toast('Kamera tidak disokong pelayar ini','err'); return; }
+  $('#scanHint').textContent = scanMode==='capture'
+    ? 'Halakan ke BARCODE untuk No. UNIZA' : 'Halakan ke QR (No. Aset) atau Barcode (No. UNIZA)';
   $('#scanner').classList.add('show'); scanActive=true;
   try{
     scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
@@ -1137,6 +1333,8 @@ function onScan(text){
   if(navigator.vibrate) navigator.vibrate(80);
   const raw=String(text).trim(), key=raw.toUpperCase();
   closeScanner();
+  // Mod tangkap (cth isi No. UNIZA dalam borang edit)
+  if(scanMode==='capture'){ const cb=scanCaptureCb; scanMode='search'; scanCaptureCb=null; if(cb) cb(raw); return; }
   let a=ASSET_BY_NO.get(key)||ASSET_BY_UNIZA.get(key);
   if(!a){ // padanan separa (kadang QR ada ruang/awalan)
     const m=key.match(/SZA\d{3,}[A-Z]?/); if(m) a=ASSET_BY_NO.get(m[0]);
