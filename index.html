@@ -11,14 +11,39 @@
 <title>Audit Aset HoSZA — UEM Edgenta</title>
 <style>
 :root{
-  --blue:#1e3a8a; --blue-700:#1d3578; --blue-600:#2746a6; --blue-50:#eef2ff;
-  --ink:#0f172a; --ink-soft:#1e293b; --muted:#64748b; --label:#94a3b8;
-  --line:#e9edf3; --bg:#f1f4f9; --card:#ffffff;
-  --green:#16a34a; --green-bg:#dcfce7; --orange:#ea7a1d; --orange-bg:#ffedd5;
-  --amber:#d97706; --red:#dc2626; --red-bg:#fee2e2;
-  --mech:#0e7490; --mech-bg:#cffafe; --elec:#b45309; --elec-bg:#fef3c7;
-  --civl:#6d28d9; --civl-bg:#ede9fe; --dept:#334155; --dept-bg:#e2e8f0;
-  --radius:16px; --shadow:0 1px 2px rgba(15,23,42,.06),0 6px 16px rgba(15,23,42,.06);
+  /* === Jenama UEM Edgenta — biru #1e3a8a kekal sebagai primer === */
+  --blue:#1e3a8a; --blue-700:#17306b; --blue-600:#2746a6; --blue-50:#eaf1ff;
+  --blue-100:#dbe6ff; --blue-200:#bcd0ff;
+
+  /* === Skala kelabu gaya Flowbite (slate, dicondong sedikit ke biru) === */
+  --gray-50:#f7f8fa; --gray-100:#eef1f5; --gray-200:#e2e6ec; --gray-300:#cbd2db;
+  --gray-400:#9aa3b1; --gray-500:#6b7480; --gray-600:#515963; --gray-700:#3a414b;
+  --gray-800:#262b33; --gray-900:#161a21;
+
+  /* === Alias semantik neutral === */
+  --ink:var(--gray-900); --ink-soft:var(--gray-800); --muted:var(--gray-600); --label:var(--gray-500);
+  --line:var(--gray-200); --bg:#eef0f4; --card:#ffffff;
+
+  /* === Status (badge) — makna dikekalkan, kekal terbaca === */
+  --green:#1f7a3f; --green-bg:#dcf5e3; --orange:#9a4d12; --orange-bg:#ffe9d2;
+  --amber:#8a5a00; --amber-bg:#fef3c7; --red:#b42318; --red-bg:#fde8e7;
+  --sky:#0369a1; --sky-bg:#e0f2fe; --indigo:#4338ca; --indigo-bg:#e5e7ff;
+
+  /* === Kategori disiplin === */
+  --mech:#0b6175; --mech-bg:#d3f7fb; --elec:#8a4209; --elec-bg:#fdf0c8;
+  --civl:#6b28d6; --civl-bg:#ece8fd; --dept:#3a3f4c; --dept-bg:#e3e6ec;
+
+  /* === Skala jarak (asas 4px) === */
+  --sp-1:4px; --sp-2:8px; --sp-3:12px; --sp-4:16px; --sp-5:20px; --sp-6:24px;
+
+  /* === Jejari === */
+  --r-sm:8px; --r-md:12px; --r-lg:16px; --r-xl:20px; --r-full:9999px;
+  --radius:var(--r-lg);
+
+  /* === Bayang (dicondong ke tona biru gelap jenama) === */
+  --shadow-sm:0 1px 2px rgba(27,43,83,.06);
+  --shadow:0 1px 3px rgba(27,43,83,.09),0 1px 2px rgba(27,43,83,.05);
+  --shadow-lg:0 12px 28px rgba(27,43,83,.14),0 4px 10px rgba(27,43,83,.06);
   --fab:#1e3a8a;
 }
 *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
@@ -31,6 +56,13 @@ body{
 button{font-family:inherit;cursor:pointer;border:0;background:none}
 input,select,textarea{font-family:inherit;font-size:15px}
 .hide{display:none!important}
+/* Fokus papan kekunci/AT — jangan sekali-kali buang cincin fokus (a11y) */
+:focus-visible{outline:3px solid #93b4ff;outline-offset:2px;border-radius:8px}
+/* Hormati prefers-reduced-motion (motion) */
+@media (prefers-reduced-motion: reduce){
+  *,*::before,*::after{animation-duration:.001ms!important;animation-iteration-count:1!important;
+    transition-duration:.001ms!important;scroll-behavior:auto!important}
+}
 
 /* ===== Header ===== */
 header{
@@ -89,41 +121,46 @@ main{padding:8px 12px 120px}
   text-transform:uppercase;margin:14px 4px 8px}
 
 /* card */
-.card{background:var(--card);border-radius:var(--radius);box-shadow:var(--shadow);
-  margin-bottom:11px;overflow:hidden;border:1px solid var(--line)}
-.card-head{display:flex;align-items:flex-start;gap:8px;padding:13px 14px 10px}
-.assetno{font-size:17px;font-weight:800;color:var(--blue);letter-spacing:.3px;line-height:1.1}
-.assetno .uniza{display:block;font-size:11px;font-weight:600;color:var(--label);letter-spacing:.2px;margin-top:2px}
+.card{background:var(--card);border-radius:var(--r-lg);box-shadow:var(--shadow);
+  margin-bottom:var(--sp-3);overflow:hidden;border:1px solid var(--gray-200);transition:box-shadow .18s ease}
+@media (hover:hover){ .card:hover{box-shadow:var(--shadow-lg)} }
+.card-head{display:flex;align-items:flex-start;gap:var(--sp-2);padding:var(--sp-4) var(--sp-4) var(--sp-3)}
+.assetno{font-size:17px;font-weight:800;color:var(--blue);letter-spacing:.2px;line-height:1.1}
+.assetno .uniza{display:block;font-size:11px;font-weight:600;color:var(--gray-500);letter-spacing:.2px;margin-top:3px}
 .head-l{flex:1;min-width:0}
-.tags{display:flex;flex-wrap:wrap;gap:5px;justify-content:flex-end;max-width:55%}
-.tag{font-size:10px;font-weight:800;border-radius:6px;padding:3px 7px;letter-spacing:.3px;white-space:nowrap}
-.tag.mech{background:var(--mech-bg);color:var(--mech)}
-.tag.elec{background:var(--elec-bg);color:var(--elec)}
-.tag.civl{background:var(--civl-bg);color:var(--civl)}
-.tag.dept{background:var(--dept-bg);color:var(--dept)}
-.tag.ok{background:var(--green-bg);color:var(--green)}
-.tag.fix{background:var(--orange-bg);color:var(--orange)}
-.tag.new{background:#e0e7ff;color:#4338ca}
-.tag.sync{display:inline-flex;align-items:center;gap:3px}
-.tag.s-local{background:#f1f5f9;color:#475569}
-.tag.s-sending{background:#e0f2fe;color:#0369a1}
-.tag.s-confirmed{background:var(--green-bg);color:var(--green)}
-.tag.s-failed{background:var(--red-bg);color:var(--red)}
+.tags{display:flex;flex-wrap:wrap;gap:5px;justify-content:flex-end;max-width:56%}
 
-.divider{height:1px;background:var(--line);margin:0 14px}
-.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px 14px;padding:11px 14px}
-.field .lbl{font-size:10.5px;color:var(--label);font-weight:700;letter-spacing:.3px;text-transform:uppercase}
-.field .val{font-size:13.5px;color:var(--ink-soft);font-weight:600;word-break:break-word;margin-top:1px}
-.field .val.empty{color:#cbd5e1;font-weight:500}
+/* ===== Badge (gaya Flowbite) — dipakai semula di kad/dashboard/modal ===== */
+.tag,.badge{display:inline-flex;align-items:center;gap:4px;font-size:10.5px;font-weight:700;
+  border-radius:var(--r-sm);padding:3px 9px;letter-spacing:.2px;white-space:nowrap;line-height:1.35}
+.tag.mech,.badge-sky{background:var(--mech-bg);color:var(--mech)}
+.tag.elec,.badge-amber{background:var(--elec-bg);color:var(--elec)}
+.tag.civl{background:var(--civl-bg);color:var(--civl)}
+.tag.dept,.badge-gray{background:var(--dept-bg);color:var(--dept)}
+.tag.ok,.badge-green{background:var(--green-bg);color:var(--green)}
+.tag.fix{background:var(--orange-bg);color:var(--orange)}
+.tag.new,.badge-indigo{background:var(--indigo-bg);color:var(--indigo)}
+.tag.sync{display:inline-flex;align-items:center;gap:4px}
+.tag.s-local{background:var(--gray-100);color:var(--gray-600)}
+.tag.s-sending,.tag.prog{background:var(--sky-bg);color:var(--sky)}
+.tag.s-confirmed{background:var(--green-bg);color:var(--green)}
+.tag.s-failed,.badge-red{background:var(--red-bg);color:var(--red)}
+
+.divider{height:1px;background:var(--gray-200);margin:0 var(--sp-4)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:var(--sp-3) var(--sp-4);padding:var(--sp-3) var(--sp-4)}
+.field .lbl{font-size:11px;color:var(--label);font-weight:600;letter-spacing:.4px;text-transform:uppercase}
+.field .val{font-size:14px;color:var(--ink-soft);font-weight:600;word-break:break-word;margin-top:2px;line-height:1.3}
+.field .val.empty{color:var(--gray-300);font-weight:500}
 
 .cardfoot{display:flex;align-items:center;justify-content:center;gap:6px;
-  padding:11px;color:var(--blue);font-weight:800;font-size:12.5px;letter-spacing:.4px;
-  border-top:1px solid var(--line);background:#fbfcfe}
-.cardfoot .arr{transition:transform .25s}
+  padding:11px;color:var(--gray-500);font-weight:700;font-size:12px;letter-spacing:.3px;
+  border-top:1px solid var(--gray-100);background:var(--gray-50)}
+.cardfoot .arr{transition:transform .25s;font-size:14px}
+.card.open .cardfoot{color:var(--blue)}
 .card.open .cardfoot .arr{transform:rotate(180deg)}
 
 /* expanded */
-.details{display:none;padding:4px 14px 16px;background:#fcfdff}
+.details{display:none;padding:var(--sp-1) var(--sp-4) var(--sp-4);background:linear-gradient(#fcfdff,#fff)}
 .card.open .details{display:block;animation:fade .2s ease}
 @keyframes fade{from{opacity:0;transform:translateY(-4px)}to{opacity:1;transform:none}}
 .sec{margin-top:14px}
@@ -167,7 +204,9 @@ main{padding:8px 12px 120px}
 .pchip.fail{background:var(--red-bg);color:var(--red);border-color:#fecaca}
 .wz-none{font-size:12.5px;color:#94a3b8;font-weight:600;margin-bottom:10px}
 .btn-photo{display:flex;width:100%;align-items:center;justify-content:center;gap:8px;
-  background:#f0fdf4;color:#15803d;border:1.5px dashed #bbf7d0;border-radius:12px;padding:12px;font-size:13px;font-weight:800}
+  background:var(--blue-50);color:var(--blue-600);border:1.5px dashed var(--blue-200);
+  border-radius:var(--r-md);padding:15px 12px;font-size:13px;font-weight:800;transition:background .15s,border-color .15s}
+@media (hover:hover){ .btn-photo:hover{background:var(--blue-100);border-color:var(--blue-600)} }
 .btn-photo:active{transform:scale(.99)}
 
 /* ===== Wizard slot ===== */
@@ -199,11 +238,39 @@ main{padding:8px 12px 120px}
 
 /* ===== Input + butang imbas (edit UNIZA) ===== */
 .inp-scan{display:flex;gap:8px}
-.inp-scan input{flex:1;border:1.5px solid var(--line);border-radius:11px;padding:11px 12px;color:var(--ink);font-weight:600;outline:0}
-.inp-scan input:focus{border-color:var(--blue)}
-.scan-mini{width:46px;flex:0 0 auto;border-radius:11px;background:var(--blue);color:#fff;
+.inp-scan input{flex:1}
+.scan-mini{width:46px;flex:0 0 auto;border-radius:var(--r-md);background:var(--blue);color:#fff;
   display:flex;align-items:center;justify-content:center}
 .scan-mini:active{transform:scale(.95)}
+
+/* ===== Audit Berpandu ===== */
+.btn-guided{background:linear-gradient(160deg,var(--blue) 0%,var(--blue-700) 100%);color:#fff;
+  border-radius:12px;padding:13px;font-size:14px;font-weight:800;letter-spacing:.2px}
+.btn-guided:active{transform:scale(.99)}
+.tag.prog{background:#e0f2fe;color:#0369a1}
+#guidedModal .sheet-h{gap:6px}
+#gBack,#gFwd{font-size:24px;background:#f1f5f9;color:#334155}
+.gprog{height:5px;background:#e9edf3}
+.gprog-bar{height:100%;background:var(--blue);width:16%;transition:width .3s;border-radius:0 3px 3px 0}
+.gsec-h{font-size:15px;font-weight:800;color:var(--blue);margin-bottom:12px}
+.gnote{font-size:12px;font-weight:700;color:var(--amber);margin:6px 0 10px;min-height:8px;display:flex;align-items:center;gap:8px}
+.gbtns{display:flex;flex-wrap:wrap;gap:8px;margin-top:6px}
+.gbtn{flex:1;min-width:120px;border-radius:11px;padding:12px;font-size:13px;font-weight:800;
+  background:#f1f5f9;color:#475569;border:1.5px solid transparent}
+.gbtn.ok{background:#f0fdf4;color:#15803d}
+.gbtn.warn{background:#fff7ed;color:#c2410c}
+.gbtn.save{background:var(--blue);color:#fff}
+.gbtn.save:disabled{background:#e2e8f0;color:#94a3b8}
+.gbtn.mini{flex:0 0 auto;min-width:0;padding:6px 11px;font-size:11.5px;background:#eff6ff;color:var(--blue)}
+.gbtn.on{border-color:currentColor;box-shadow:0 0 0 3px rgba(30,58,138,.08)}
+.gbtn:active{transform:scale(.98)}
+.gnext{margin-top:18px}
+.gnext:disabled{background:#cbd5e1;color:#fff}
+.gsum{display:flex;align-items:center;justify-content:space-between;gap:10px;padding:11px 0;border-bottom:1px solid var(--line)}
+.gsum span{font-size:13px;color:var(--muted);font-weight:700}
+.gsum b{font-size:13px;font-weight:800}
+.gsum b.ok{color:var(--green)} .gsum b.warn{color:var(--orange)} .gsum b.muted{color:#cbd5e1;font-weight:600}
+.gsum-val{font-size:13.5px;color:var(--ink-soft);font-weight:600;margin:-4px 0 9px;word-break:break-word}
 
 /* ===== FAB ===== */
 .fab{position:fixed;right:16px;bottom:calc(18px + env(safe-area-inset-bottom));z-index:45;
@@ -223,28 +290,38 @@ main{padding:8px 12px 120px}
 .overlay.show{display:flex;animation:fade .15s ease}
 /* Wizard gambar mesti di ATAS borang lain (cth borang Daftar Aset Baharu) */
 #photoModal{z-index:66}
-.sheet{background:#fff;width:100%;max-width:560px;border-radius:20px 20px 0 0;
+.sheet{background:#fff;width:100%;max-width:560px;border-radius:var(--r-xl) var(--r-xl) 0 0;
   max-height:90vh;overflow:auto;animation:up .22s ease}
 @keyframes up{from{transform:translateY(30px);opacity:.6}to{transform:none;opacity:1}}
-.sheet.center{border-radius:20px;margin:auto;max-height:86vh}
+.sheet.center{border-radius:var(--r-xl);margin:auto;max-height:86vh}
 .overlay.c{align-items:center;padding:16px}
+/* Desktop/tablet: sheet bawah → dialog berpusat sederhana */
+@media (min-width:640px){
+  .overlay{align-items:center;padding:24px}
+  .sheet{max-width:560px;border-radius:var(--r-xl);max-height:88vh}
+}
 .sheet-h{position:sticky;top:0;background:#fff;display:flex;align-items:center;gap:10px;
-  padding:16px 18px 12px;border-bottom:1px solid var(--line);z-index:2}
+  padding:16px 18px 13px;border-bottom:1px solid var(--gray-100);z-index:2}
 .sheet-h b{flex:1;font-size:16px;font-weight:800;color:var(--ink)}
-.sheet-h .x{font-size:20px;color:var(--muted);width:32px;height:32px;border-radius:8px;
-  display:flex;align-items:center;justify-content:center;background:#f1f5f9}
-.sheet-b{padding:16px 18px 22px}
-.formrow{margin-bottom:13px}
-.formrow label{display:block;font-size:11.5px;font-weight:800;color:var(--muted);
-  letter-spacing:.3px;text-transform:uppercase;margin-bottom:5px}
-.formrow input,.formrow textarea,.formrow select{width:100%;border:1.5px solid var(--line);
-  border-radius:11px;padding:11px 12px;color:var(--ink);font-weight:600;background:#fff;outline:0}
-.formrow input:focus,.formrow textarea:focus{border-color:var(--blue)}
-.formrow textarea{min-height:74px;resize:vertical}
-.formrow .orig{font-size:11px;color:var(--label);margin-top:4px;font-weight:600}
-.btn-primary{width:100%;background:var(--blue);color:#fff;border-radius:12px;padding:14px;
-  font-size:15px;font-weight:800;margin-top:4px}
-.btn-ghost{width:100%;background:#f1f5f9;color:var(--muted);border-radius:12px;padding:12px;
+.sheet-h .x{font-size:19px;color:var(--gray-600);width:34px;height:34px;border-radius:var(--r-sm);
+  display:flex;align-items:center;justify-content:center;background:var(--gray-100)}
+.sheet-h .x:active{background:var(--gray-200)}
+.sheet-b{padding:18px}
+.formrow{margin-bottom:var(--sp-4)}
+.formrow label{display:block;font-size:11.5px;font-weight:700;color:var(--gray-600);
+  letter-spacing:.3px;text-transform:uppercase;margin-bottom:6px}
+.formrow input,.formrow textarea,.formrow select,.inp-scan input{width:100%;min-height:46px;
+  border:1.5px solid var(--gray-300);border-radius:var(--r-md);padding:11px 13px;color:var(--ink);
+  font-weight:600;background:#fff;outline:0;transition:border-color .15s,box-shadow .15s}
+.formrow input:focus,.formrow textarea:focus,.formrow select:focus,.inp-scan input:focus{
+  border-color:var(--blue);box-shadow:0 0 0 3px var(--blue-50)}
+.formrow input::placeholder,.inp-scan input::placeholder{color:var(--gray-400);font-weight:500}
+.formrow textarea{min-height:78px;resize:vertical;line-height:1.4}
+.formrow .orig{font-size:11px;color:var(--gray-500);margin-top:5px;font-weight:600}
+.btn-primary{width:100%;background:var(--blue);color:#fff;border-radius:var(--r-md);padding:14px;
+  font-size:15px;font-weight:800;margin-top:var(--sp-1);box-shadow:0 2px 6px rgba(30,58,138,.25)}
+.btn-primary:active{transform:translateY(1px)}
+.btn-ghost{width:100%;background:var(--gray-100);color:var(--gray-600);border-radius:var(--r-md);padding:12px;
   font-size:13px;font-weight:800;margin-top:9px}
 .btn-danger{color:var(--red);background:var(--red-bg)}
 
@@ -273,12 +350,13 @@ main{padding:8px 12px 120px}
 .scan-hint{position:absolute;bottom:60px;left:0;right:0;text-align:center;color:#fff;font-size:13px;
   font-weight:600;padding:0 24px;text-shadow:0 1px 4px #000}
 
-/* toast */
+/* toast — kad putih gaya Flowbite, jalur warna status di kiri */
 #toast{position:fixed;left:50%;bottom:96px;transform:translateX(-50%) translateY(20px);z-index:80;
-  background:var(--ink);color:#fff;font-size:13px;font-weight:700;padding:11px 16px;border-radius:12px;
-  box-shadow:0 8px 24px rgba(0,0,0,.3);opacity:0;transition:.25s;max-width:90vw;text-align:center;pointer-events:none}
+  background:#fff;color:var(--ink);font-size:13px;font-weight:700;padding:12px 16px;border-radius:var(--r-md);
+  box-shadow:var(--shadow-lg);opacity:0;transition:.25s;max-width:90vw;text-align:left;pointer-events:none;
+  border-left:4px solid var(--blue)}
 #toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
-#toast.ok{background:#15803d}#toast.err{background:#b91c1c}
+#toast.ok{border-left-color:var(--green)}#toast.err{border-left-color:var(--red)}
 
 /* update banner */
 #update{position:fixed;left:12px;right:12px;bottom:calc(16px + env(safe-area-inset-bottom));z-index:85;
@@ -297,7 +375,40 @@ main{padding:8px 12px 120px}
 .regbtn{display:block;width:100%;text-align:center;padding:15px;color:#fff;font-weight:800;font-size:14px;
   background:var(--blue);border-radius:14px;box-shadow:var(--shadow);margin:4px auto;max-width:480px}
 .regbtn:active{transform:scale(.99)}
-.warnbar{background:#fff7ed;color:#9a3412;font-size:12px;font-weight:700;padding:9px 14px;text-align:center}
+.warnbar{background:var(--amber-bg);color:#92400e;font-size:12px;font-weight:700;padding:9px 14px;text-align:center}
+
+/* ===== Dashboard ringkasan ===== */
+.dash{background:var(--card);margin:10px 12px 0;border:1px solid var(--gray-200);border-radius:var(--r-lg);
+  padding:var(--sp-4);box-shadow:var(--shadow);animation:fade .2s ease}
+.dash-h{display:flex;align-items:center;font-size:14.5px;font-weight:800;color:var(--ink)}
+.dash-x{margin-left:auto;width:30px;height:30px;border-radius:var(--r-sm);background:var(--gray-100);color:var(--gray-600);font-size:16px}
+.dash-sub{font-size:11px;font-weight:700;color:var(--label);text-transform:uppercase;letter-spacing:.4px;margin:14px 0 8px}
+.kpi-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:var(--sp-2)}
+@media (min-width:600px){ .kpi-grid{grid-template-columns:repeat(4,1fr)} }
+.kpi{border-radius:var(--r-md);padding:12px 13px;background:var(--gray-50);border:1px solid var(--gray-100)}
+.kpi-n{font-size:24px;font-weight:800;color:var(--ink);line-height:1}
+.kpi-l{font-size:11px;font-weight:700;color:var(--muted);margin-top:6px}
+.kpi-fix{background:var(--orange-bg);border-color:transparent} .kpi-fix .kpi-n{color:var(--orange)}
+.kpi-warn{background:var(--amber-bg);border-color:transparent} .kpi-warn .kpi-n{color:var(--amber)}
+.kpi-blue{background:var(--blue-50);border-color:transparent} .kpi-blue .kpi-n{color:var(--blue)}
+.kpi-gray .kpi-n{color:var(--gray-600)}
+.kpi-sky{background:var(--sky-bg);border-color:transparent} .kpi-sky .kpi-n{color:var(--sky)}
+.kpi-green{background:var(--green-bg);border-color:transparent} .kpi-green .kpi-n{color:var(--green)}
+.kpi-red{background:var(--red-bg);border-color:transparent} .kpi-red .kpi-n{color:var(--red)}
+.dash-prog{margin-top:16px}
+.dash-prog-top{display:flex;justify-content:space-between;font-size:12.5px;font-weight:700;color:var(--muted);margin-bottom:7px}
+.dash-prog-top b{color:var(--blue);font-weight:800}
+.dash-bar{height:10px;background:var(--gray-200);border-radius:var(--r-full);overflow:hidden}
+.dash-bar-fill{height:100%;background:linear-gradient(90deg,var(--blue),var(--blue-600));border-radius:var(--r-full);transition:width .4s}
+.dash-last{font-size:11px;color:var(--label);font-weight:600;margin-top:9px}
+.miniact.on{background:#fff;color:var(--blue)}
+
+/* ===== Responsif: telefon → tablet → desktop (kekal 1 lajur, dipusatkan) ===== */
+@media (min-width:900px){
+  .h-top,.searchbar,.syncbar,.filters,main,.dash,.warnbar{max-width:900px;margin-inline:auto}
+  main{padding-left:0;padding-right:0}
+  .filters{padding-left:0;padding-right:0}
+}
 </style>
 </head>
 <body>
@@ -336,11 +447,14 @@ main{padding:8px 12px 120px}
     <span class="syncpill" id="sp-ok">✅ 0</span>
     <span class="syncpill" id="sp-fail">⚠️ 0</span>
     <span class="sync-spacer"></span>
+    <button class="miniact" id="btnDash">📊 Ringkasan</button>
     <button class="miniact" id="btnSync">⟳ Segerak</button>
   </div>
 </header>
 
 <div class="warnbar hide" id="endpointWarn">⚠️ URL Pengurusan belum ditetapkan — audit disimpan lokal sahaja. Tekan ⚙️ untuk tetapkan.</div>
+
+<section class="dash hide" id="dashboard"></section>
 
 <div class="filters" id="filters">
   <button class="chip on" data-f="all">Semua<span class="n" id="c-all"></span></button>
@@ -353,10 +467,10 @@ main{padding:8px 12px 120px}
   <div class="loading"><div class="spin"></div>Memuatkan data aset…</div>
 </main>
 
-<!-- FAB Tick -->
+<!-- FAB = Mula Audit Berpandu -->
 <div class="fab" id="fab">
   <div class="pill" id="fabPill"></div>
-  <button class="circle" id="fabBtn" title="Tanda Telah Diperiksa">👍</button>
+  <button class="circle" id="fabBtn" title="Mula Audit Berpandu">▶</button>
 </div>
 
 <!-- ===== Modals ===== -->
@@ -401,6 +515,19 @@ main{padding:8px 12px 120px}
   <div class="sheet">
     <div class="sheet-h"><b>➕ Daftar Aset Baharu</b><button class="x" data-close>✕</button></div>
     <div class="sheet-b" id="regBody"></div>
+  </div>
+</div>
+
+<div class="overlay" id="guidedModal">
+  <div class="sheet">
+    <div class="sheet-h">
+      <button class="x" id="gBack" title="Kembali" style="visibility:hidden">‹</button>
+      <b id="guidedTitle">▶ Audit Berpandu</b>
+      <button class="x" id="gFwd" title="Maju" style="visibility:hidden">›</button>
+      <button class="x" data-close>✕</button>
+    </div>
+    <div class="gprog"><div class="gprog-bar" id="gProgBar"></div></div>
+    <div class="sheet-b" id="guidedBody"></div>
   </div>
 </div>
 
@@ -482,16 +609,20 @@ const PHOTO_KINDS={
   nameplate:   {label:'Gambar Nameplate', hint:'model / serial / brand',  n:2},
   keseluruhan: {label:'Gambar Keseluruhan',hint:'aset penuh',             n:3},
   tambahan1:   {label:'Tambahan 1',       hint:'gambar tambahan',         n:4},
-  tambahan2:   {label:'Tambahan 2',       hint:'gambar tambahan',         n:5}
+  tambahan2:   {label:'Tambahan 2',       hint:'gambar tambahan',         n:5},
+  jenisisu:    {label:'Gambar Isu Jenis Aset', hint:'bukti masalah jenis aset', n:0}
 };
 const MAIN_KINDS=['aset','nameplate','keseluruhan'];
 const EXTRA_KINDS=['tambahan1','tambahan2'];
+const PHOTO_COL={aset:'Gambar No. Aset',nameplate:'Gambar Nameplate',keseluruhan:'Gambar Keseluruhan',
+  tambahan1:'Gambar Tambahan 1',tambahan2:'Gambar Tambahan 2',jenisisu:'Gambar Jenis Aset (Isu)'};
 let wizardAsset=null;          // aset yang sedang diurus dlm wizard gambar
 let wizardReveal=0;            // bil. slot tambahan yang didedahkan (0-2)
 let wizardSkip=new Set();      // slot yang dilangkau (UI sahaja)
 let wizardRequired=false;      // mod wajib (borang Daftar Aset Baharu)
 
 let NEW_ASSETS=new Map();      // asset -> rekod aset baharu (didaftar pengguna)
+let guidedAsset=null, guidedStep=1;   // Audit Berpandu
 
 /* Format No. Aset: SZA + 5 digit + F  (cth SZA00009F) */
 function isValidAssetNo(s){ return /^SZA\d{5}F$/i.test(String(s||'').trim()); }
@@ -595,10 +726,12 @@ function cardHTML(a){
   const uniza=effVal(a,'uniza');
 
   const isNew=o&&o.isNew;
+  const inprog=o&&o.guidedActive&&!checked;
   const tags=[
     isNew?`<span class="tag new">➕ Aset Baharu</span>`:tagWorkgroup(a[F.workgroup]),
     a[F.userdept]?`<span class="tag dept">${esc(a[F.userdept])}</span>`:"",
-    (checked&&!isNew)?`<span class="tag ok">✓ Diperiksa</span>`:"",
+    inprog?`<span class="tag prog">▶ Audit ${o.guidedStep||1}/6</span>`:"",
+    (checked&&!isNew)?`<span class="tag ok">✓ Diperiksa${o&&o.method==='Berpandu'?' (B)':''}</span>`:"",
     fixed?`<span class="tag fix">Pembetulan</span>`:"",
     o?syncTag(o):""
   ].join("");
@@ -658,9 +791,11 @@ function detailsHTML(a){
       <span class="dot" style="background:var(--green)"></span> Telah Diperiksa oleh ${esc(o.checkedBy||'-')} · ${esc(fmtTime(o.checkedAt))}</div>`:''}
     ${o&&o.note?`<div class="field" style="margin-top:11px"><div class="lbl">Catatan</div><div class="val">${esc(o.note)}</div></div>`:''}
 
+    <button class="btn btn-guided" data-guided="${esc(no)}" style="width:100%;margin-top:14px">
+      ▶ ${o&&o.guidedActive&&!checked?`Sambung Audit Berpandu (${o.guidedStep||1}/6)`:'Mula Audit Berpandu'}</button>
     <div class="acts">
       <button class="btn btn-tick ${checked?'done':''}" data-tick="${esc(no)}">
-        ${checked?'✓ Telah Diperiksa':'👍 Telah Diperiksa'}</button>
+        ${checked?'✓ Diperiksa':'👍 Tick Laju'}</button>
       <button class="btn btn-edit" data-edit="${esc(no)}">✏️ Edit</button>
     </div>
 
@@ -753,8 +888,9 @@ function updateFab(){
   const fab=$('#fab');
   if(expandedAsset){
     const o=auditMap.get(expandedAsset), done=o&&o.checked;
+    const inprog=o&&o.guidedActive&&!done;
     fab.classList.add('show');
-    $('#fabPill').textContent=(done?'✓ ':'')+expandedAsset;
+    $('#fabPill').textContent=(done?'✓ Audit ':(inprog?`Sambung ${o.guidedStep||1}/6 · `:'Audit · '))+expandedAsset;
     $('#fabBtn').classList.toggle('done',!!done);
   } else fab.classList.remove('show');
 }
@@ -777,6 +913,59 @@ function updateSummary(){
   $('#c-unsynced').textContent=unsynced?` ${unsynced}`:'';
   $('#c-checked').textContent=checked?` ${checked}`:'';
   $('#c-fixed').textContent=fixed?` ${fixed}`:'';
+  if(dashOpen) renderDashboard();
+}
+
+/* ============================================================
+   Dashboard ringkasan (boleh-tutup)
+   ============================================================ */
+let dashOpen=false;
+let lastSyncAt=+(localStorage.getItem('lastSyncAt')||0);
+function kpiCard(label,n,tone){ return `<div class="kpi kpi-${tone}"><div class="kpi-n">${n}</div><div class="kpi-l">${esc(label)}</div></div>`; }
+function isEmptyVal(v){ return !v || /^(n\/a|na|not available|tiada|-|none)$/i.test(String(v).trim()); }
+function renderDashboard(){
+  const el=$('#dashboard'); if(!el) return;
+  let local=0,sending=0,ok=0,fail=0,fixed=0,noserial=0,nophoto=0;
+  const total=auditMap.size;
+  for(const [no,o] of auditMap){
+    const s=o.dataStatus||'local';
+    if(s==='local'||s==='draft')local++; else if(s==='sending')sending++; else if(s==='confirmed')ok++; else if(s==='failed')fail++;
+    if(o.edits&&Object.keys(o.edits).length)fixed++;
+    const a=ASSET_BY_NO.get(no.toUpperCase())||[];
+    if(isEmptyVal(effVal(a,'serial'))) noserial++;
+    const pc=photoCache.get(no)||{};
+    const hasPhoto=a[F.g1]||a[F.g2]||MAIN_KINDS.concat(EXTRA_KINDS).some(k=>(o.photos&&o.photos[k])||(pc[k]&&(pc[k].url||pc[k].thumb)));
+    if(!hasPhoto) nophoto++;
+  }
+  const pct=total?Math.round(ok/total*100):0;
+  el.innerHTML=`
+    <div class="dash-h">📊 Ringkasan Audit <button class="dash-x" id="dashClose" aria-label="Tutup">✕</button></div>
+    <div class="dash-sub">Isu data · ${total} aset diaudit</div>
+    <div class="kpi-grid">
+      ${kpiCard('Pembetulan',fixed,'fix')}
+      ${kpiCard('Tiada Serial',noserial,'warn')}
+      ${kpiCard('Tiada Gambar',nophoto,'warn')}
+      ${kpiCard('Jumlah Diaudit',total,'blue')}
+    </div>
+    <div class="dash-sub">Status penyegerakan</div>
+    <div class="kpi-grid">
+      ${kpiCard('Belum Sync',local,'gray')}
+      ${kpiCard('Menghantar',sending,'sky')}
+      ${kpiCard('Disahkan',ok,'green')}
+      ${kpiCard('Gagal',fail,'red')}
+    </div>
+    <div class="dash-prog">
+      <div class="dash-prog-top"><span>Selesai disegerak</span><b>${pct}%</b></div>
+      <div class="dash-bar"><div class="dash-bar-fill" style="width:${pct}%"></div></div>
+      <div class="dash-last">⟳ Sync terakhir: ${lastSyncAt?esc(fmtTime(new Date(lastSyncAt).toISOString())):'belum pernah'}</div>
+    </div>`;
+  $('#dashClose').onclick=()=>toggleDash(false);
+}
+function toggleDash(force){
+  dashOpen = force!==undefined?force:!dashOpen;
+  $('#dashboard').classList.toggle('hide',!dashOpen);
+  $('#btnDash').classList.toggle('on',dashOpen);
+  if(dashOpen){ renderDashboard(); $('#dashboard').scrollIntoView({behavior:'smooth',block:'nearest'}); }
 }
 
 /* ============================================================
@@ -787,11 +976,12 @@ async function getOrInitAudit(no){
   const a=ASSET_BY_NO.get(no.toUpperCase());
   if(!o){
     o={asset:no, uniza:(a?a[F.uniza]:'')||'', user:getUser(), deviceTime:nowISO(),
-       checked:false, edits:{}, note:'', photos:{}, photoTiada:{},
+       checked:false, edits:{}, note:'', photos:{}, photoTiada:{}, semakan:{}, method:'',
        dataStatus:'local', updatedAt:nowISO()};
   }
   if(!o.photos) o.photos={};
   if(!o.photoTiada) o.photoTiada={};
+  if(!o.semakan) o.semakan={};
   return o;
 }
 function isNewAsset(no){ return NEW_ASSETS.has(no); }
@@ -817,9 +1007,9 @@ function openEdit(no){
   if(!getUser()){ openName(); return; }
   if(isNewAsset(no)){ openRegister(no); return; }   // aset baharu -> borang daftar
   const a=ASSET_BY_NO.get(no.toUpperCase()); if(!a) return;
-  // Medan: No. UNIZA (+imbas), Lokasi, Jenama, Model, No. Serial
+  // Medan: No. UNIZA (+imbas), Lokasi, Jenama, Model, No. Serial (+imbas)
   const fields=[
-    ['locno','Lokasi'],['brand','Jenama'],['model','Model'],['serial','No. Serial']
+    ['locno','Lokasi'],['brand','Jenama'],['model','Model']
   ];
   const o=auditMap.get(no)||{edits:{},note:''};
   let h=`<div style="font-size:13px;color:var(--muted);margin-bottom:14px">Aset <b style="color:var(--blue)">${esc(no)}</b> — kemas kini medan yang perlu dibetulkan. <b style="color:var(--green)">Menyimpan = auto-tanda Telah Diperiksa.</b></div>`;
@@ -840,6 +1030,14 @@ function openEdit(no){
       <input data-ef="${k}" value="${esc(cur)}">
       ${master?`<div class="orig">Asal: ${esc(master)}</div>`:''}</div>`;
   }
+  // No. Serial + butang imbas (QR & barcode)
+  const sMaster=a[F.serial]||'';
+  h+=`<div class="formrow"><label>No. Serial</label>
+    <div class="inp-scan">
+      <input data-ef="serial" id="ef-serial" value="${esc(effVal(a,'serial'))}" placeholder="Imbas atau taip…">
+      <button type="button" class="scan-mini" id="scanSerial" title="Imbas QR / Barcode Serial">${scanIconSVG()}</button>
+    </div>
+    ${sMaster?`<div class="orig">Asal: ${esc(sMaster)}</div>`:''}</div>`;
   h+=`<div class="formrow"><label>Catatan</label><textarea data-ef="note" placeholder="Catatan audit (jika ada)…">${esc(o.note||'')}</textarea></div>`;
   h+=`<div class="formrow"><label>Gambar</label>
     <button type="button" class="btn-photo" id="editPhoto">📸 Upload / Urus Gambar (sehingga 5)</button></div>`;
@@ -847,7 +1045,8 @@ function openEdit(no){
   if(auditMap.has(no)) h+=`<button class="btn-ghost btn-danger" id="editDel">🗑️ Padam rekod audit</button>`;
   $('#editBody').innerHTML=h;
   $('#editSave').onclick=()=>saveEdit(no);
-  $('#scanUniza').onclick=()=>openScanner('capture',val=>{ $('#ef-uniza').value=val; toast('Barcode: '+val,'ok'); });
+  $('#scanUniza').onclick=()=>openScanner('capture',val=>{ $('#ef-uniza').value=val; toast('Barcode: '+val,'ok'); },'barcode');
+  $('#scanSerial').onclick=()=>openScanner('capture',val=>{ $('#ef-serial').value=val; toast('Serial: '+val,'ok'); },'any');
   $('#editPhoto').onclick=()=>openPhotoWizard(no);
   if($('#editDel')) $('#editDel').onclick=()=>delAudit(no);
   showOverlay('editModal');
@@ -902,17 +1101,23 @@ function openRegister(prefill){
       <input id="rf-uniza" value="${esc(ex.fields.uniza||'')}" placeholder="Imbas barcode atau taip…">
       <button type="button" class="scan-mini" id="rScanUniza" title="Imbas barcode UNIZA">${scanIconSVG()}</button>
     </div></div>`;
-  for(const [k,lbl] of [['location','Lokasi'],['brand','Jenama'],['model','Model'],['serial','No. Serial']]){
+  for(const [k,lbl] of [['location','Lokasi'],['brand','Jenama'],['model','Model']]){
     h+=`<div class="formrow"><label>${esc(lbl)}</label><input id="rf-${k}" value="${esc(ex.fields[k]||'')}"></div>`;
   }
+  h+=`<div class="formrow"><label>No. Serial</label>
+    <div class="inp-scan">
+      <input id="rf-serial" value="${esc(ex.fields.serial||'')}" placeholder="Imbas atau taip…">
+      <button type="button" class="scan-mini" id="rScanSerial" title="Imbas QR / Barcode Serial">${scanIconSVG()}</button>
+    </div></div>`;
   h+=`<div class="formrow"><label>Catatan</label><textarea id="rf-note" placeholder="Catatan (jika ada)…">${esc(ex.fields.note||'')}</textarea></div>`;
   h+=`<div class="formrow"><label>Gambar <span style="color:var(--red)">*</span></label>
     <button type="button" class="btn-photo" id="rPhoto">📸 Ambil Gambar (wajib 3)</button>
     <div class="orig" id="rPhotoStat"></div></div>`;
   h+=`<button class="btn-primary" id="regSave">💾 Daftar Aset</button>`;
   $('#regBody').innerHTML=h;
-  $('#rScanAsset').onclick=()=>openScanner('capture',v=>{ $('#rf-asset').value=normalizeAssetNo(v)||String(v).toUpperCase(); });
-  $('#rScanUniza').onclick=()=>openScanner('capture',v=>{ $('#rf-uniza').value=v; });
+  $('#rScanAsset').onclick=()=>openScanner('capture',v=>{ $('#rf-asset').value=normalizeAssetNo(v)||String(v).toUpperCase(); },'qr');
+  $('#rScanUniza').onclick=()=>openScanner('capture',v=>{ $('#rf-uniza').value=v; },'barcode');
+  $('#rScanSerial').onclick=()=>openScanner('capture',v=>{ $('#rf-serial').value=v; },'any');
   $('#rPhoto').onclick=()=>{
     const an=$('#rf-asset').value.trim().toUpperCase();
     if(!isValidAssetNo(an)){ toast('Isi No. Aset sah dahulu (SZA#####F)','err'); $('#rf-asset').focus(); return; }
@@ -984,6 +1189,252 @@ async function saveNewAsset(){
 }
 
 /* ============================================================
+   AUDIT BERPANDU (Guided Audit) — 6 langkah + ringkasan
+   ============================================================ */
+async function gAudit(no){
+  let o=auditMap.get(no)||await getOrInitAudit(no);
+  o.method='Berpandu'; if(!o.semakan)o.semakan={}; if(!o.edits)o.edits={};
+  auditMap.set(no,o); return o;
+}
+async function persistGuided(no,o){
+  o=o||auditMap.get(no); if(!o) return;
+  o.guidedActive=true; o.guidedStep=guidedStep; o.method='Berpandu';
+  if(!o.checked) o.dataStatus='draft';     // belum dihantar sehingga 'Hantar'
+  o.user=getUser(); o.updatedAt=nowISO();
+  auditMap.set(no,o); await dbPut('audits',o);
+}
+function setEditField(no,key,val,a){
+  let o=auditMap.get(no); o.edits=o.edits||{};
+  const master=(a[F[key]]||'');
+  if(val!==master && val!=='') o.edits[key]=val; else delete o.edits[key];
+  if(key==='uniza') o.uniza=val;
+  auditMap.set(no,o);
+}
+
+function openGuided(no){
+  if(!getUser()){ openName(); return; }
+  if(isNewAsset(no)){ openRegister(no); return; }   // aset baharu → borang daftar
+  const a=ASSET_BY_NO.get(no.toUpperCase()); if(!a) return;
+  guidedAsset=no;
+  const o=auditMap.get(no);
+  guidedStep=(o&&o.guidedActive&&o.guidedStep)?o.guidedStep:1;
+  showOverlay('guidedModal'); renderGuidedStep();
+}
+
+/* Adakah langkah ini sudah selesai (untuk butang maju)? */
+function gStepResolved(no,step){
+  const o=auditMap.get(no)||{semakan:{}}, s=o.semakan||{};
+  if(step===1) return !!s.uniza;
+  if(step===2) return !!s.lokasi;
+  if(step===3){ const pc=(photoCache.get(no)||{}).jenisisu||{}; const hasIsu=(o.photos&&o.photos.jenisisu)||pc.url||pc.thumb; return s.jenis==='Tiada Isu'||(s.jenis==='Bermasalah'&&hasIsu); }
+  if(step===4) return !!s.spec;
+  if(step===5) return s.gambar==='Tiada Isu'||s.gambar==='Dimuat naik';
+  if(step===6) return true;
+  return false;
+}
+function guidedNext(){ if(guidedStep<7){ guidedStep++; persistGuided(guidedAsset); renderGuidedStep(); } }
+/* Maju selepas selesai langkah tertentu (cth selepas ambil gambar) */
+function guidedMaybeAdvance(no,fromStep){
+  if(guidedAsset!==no) return;
+  if(guidedStep===fromStep && gStepResolved(no,fromStep)) guidedNext();
+  else renderGuidedStep();
+}
+
+function renderGuidedStep(){
+  const no=guidedAsset; if(!no) return;
+  const a=ASSET_BY_NO.get(no.toUpperCase()), o=auditMap.get(no)||{semakan:{},edits:{}};
+  $('#gProgBar').style.width=(Math.min(guidedStep,6)/6*100)+'%';
+  const back=$('#gBack'), fwd=$('#gFwd');
+  back.style.visibility=(guidedStep>1)?'visible':'hidden';
+  back.onclick=()=>{ if(guidedStep>1){ guidedStep--; renderGuidedStep(); } };
+  // Butang maju: hanya untuk langkah yang DAH bertanda (selepas pergi ke belakang)
+  const canFwd = guidedStep<=6 && gStepResolved(no,guidedStep);
+  fwd.style.visibility = canFwd?'visible':'hidden';
+  fwd.onclick=()=>{ if(gStepResolved(no,guidedStep)) guidedNext(); };
+  if(guidedStep>6){ renderGuidedSummary(); return; }
+  $('#guidedTitle').textContent=`▶ Audit ${guidedStep}/6 — ${no}`;
+  ({1:gsUniza,2:gsLokasi,3:gsJenis,4:gsSpec,5:gsGambar,6:gsRemark}[guidedStep])(no,a,o);
+}
+function gShell(inner){ $('#guidedBody').innerHTML=inner; }
+function gBtns(key,opts,cur){
+  return `<div class="gbtns">`+opts.map(([v,cls,lbl])=>
+    `<button class="gbtn ${cls} ${cur===v?'on':''}" data-gset="${key}|${v}">${lbl}</button>`).join('')+`</div>`;
+}
+
+/* ---- Langkah 1: No. UNIZA ---- */
+function gsUniza(no,a,o){
+  const master=a[F.uniza]||'', cur=effVal(a,'uniza'), st=(o.semakan||{}).uniza||'';
+  const h=`<div class="gsec-h">📋 No. UNIZA / HOSZA</div>
+    <div class="formrow"><label>No. UNIZA</label>
+      <div class="inp-scan"><input id="g-uniza" value="${esc(cur)}" placeholder="Imbas atau taip…">
+        <button type="button" class="scan-mini" id="gScanUniza">${scanIconSVG()}</button></div>
+      <div class="orig">${master?'Asal: '+esc(master):'Kosong dalam pangkalan data'}</div></div>
+    <div class="gnote" id="gNote"></div>
+    <div class="gbtns">
+      <button class="gbtn ok ${st==='Tiada Isu'?'on':''}" data-gset="uniza|Tiada Isu">✓ Tiada Isu</button>
+      <button class="gbtn warn ${st==='Tiada Tagging'?'on':''}" data-gset="uniza|Tiada Tagging">⚠️ Tiada Tagging</button>
+      <button class="gbtn save" id="gSave" disabled>💾 Simpan</button>
+    </div>`;
+  gShell(h);
+  const inp=$('#g-uniza');
+  const onIn=()=>{ const ch=inp.value.trim()!==(cur||''); $('#gSave').disabled=!ch; $('#gNote').textContent=ch?'Anda ubah nilai — tekan Simpan.':''; };
+  inp.addEventListener('input',onIn); onIn();
+  $('#gScanUniza').onclick=()=>openScanner('capture',v=>{ inp.value=v; onIn(); },'barcode');
+  $('#gSave').onclick=async()=>{ setEditField(no,'uniza',inp.value.trim(),a); const oo=await gAudit(no); oo.semakan.uniza='Dibetulkan'; await persistGuided(no,oo); toast('💾 UNIZA disimpan','ok'); guidedNext(); };
+}
+
+/* ---- Langkah 2: Lokasi ---- */
+function gsLokasi(no,a,o){
+  const cur=effVal(a,'locno'), master=a[F.locno]||'', st=(o.semakan||{}).lokasi||'';
+  const h=`<div class="gsec-h">📍 Lokasi</div>
+    <div class="formrow"><label>No. Lokasi</label><input id="g-locno" value="${esc(cur)}">
+      ${master?`<div class="orig">Asal: ${esc(master)}</div>`:''}</div>
+    <div class="field"><div class="lbl">Nama Lokasi</div><div class="val">${valHTML(a[F.locname])}</div></div>
+    <div class="gnote" id="gNote"></div>
+    <div class="gbtns">
+      <button class="gbtn ok ${st==='Tiada Isu'?'on':''}" data-gset="lokasi|Tiada Isu">✓ Tiada Isu</button>
+      <button class="gbtn save" id="gSave" disabled>💾 Simpan</button>
+    </div>`;
+  gShell(h);
+  const inp=$('#g-locno');
+  const onIn=()=>{ const ch=inp.value.trim()!==(cur||''); $('#gSave').disabled=!ch; $('#gNote').textContent=ch?'Anda ubah nilai — tekan Simpan.':''; };
+  inp.addEventListener('input',onIn); onIn();
+  $('#gSave').onclick=async()=>{ setEditField(no,'locno',inp.value.trim(),a); const oo=await gAudit(no); oo.semakan.lokasi='Dibetulkan'; await persistGuided(no,oo); toast('💾 Lokasi disimpan','ok'); guidedNext(); };
+}
+
+/* ---- Langkah 3: Jenis Aset (baca sahaja) ---- */
+function gsJenis(no,a,o){
+  const st=(o.semakan||{}).jenis||'';
+  const pc=(photoCache.get(no)||{}).jenisisu||{};
+  const hasIsu=(o.photos&&o.photos.jenisisu)||pc.url||pc.thumb;
+  const h=`<div class="gsec-h">🔧 Jenis Aset</div>
+    <div class="field"><div class="lbl">Jenis Aset</div><div class="val">${valHTML(a[F.typedesc])}</div></div>
+    <div class="field" style="margin-top:8px"><div class="lbl">Kod Jenis</div><div class="val">${valHTML(a[F.typecode])}</div></div>
+    <div class="orig" style="margin-top:8px">Jenis aset tak boleh diedit. Jika salah/bermasalah → tekan Bermasalah & ambil gambar bukti.</div>
+    ${st==='Bermasalah'?`<div class="gnote">${hasIsu?'📷 Gambar isu tersimpan. ':'📷 Sila ambil gambar bukti. '}<button class="gbtn mini" data-gbermasalah>${hasIsu?'Ganti gambar':'Ambil gambar'}</button></div>`:''}
+    <div class="gbtns">
+      <button class="gbtn ok ${st==='Tiada Isu'?'on':''}" data-gset="jenis|Tiada Isu">✓ Tiada Isu</button>
+      <button class="gbtn warn ${st==='Bermasalah'?'on':''}" data-gbermasalah>⚠️ Bermasalah (gambar)</button>
+    </div>`;
+  gShell(h);
+}
+
+/* ---- Langkah 4: Jenama / Model / Serial ---- */
+function gsSpec(no,a,o){
+  const st=(o.semakan||{}).spec||'';
+  const cb=effVal(a,'brand'), cm=effVal(a,'model'), cs=effVal(a,'serial');
+  const h=`<div class="gsec-h">🔧 Jenama · Model · Serial</div>
+    <div class="formrow"><label>Jenama</label><input id="g-brand" value="${esc(cb)}">${a[F.brand]?`<div class="orig">Asal: ${esc(a[F.brand])}</div>`:''}</div>
+    <div class="formrow"><label>Model</label><input id="g-model" value="${esc(cm)}">${a[F.model]?`<div class="orig">Asal: ${esc(a[F.model])}</div>`:''}</div>
+    <div class="formrow"><label>No. Serial</label>
+      <div class="inp-scan"><input id="g-serial" value="${esc(cs)}">
+        <button type="button" class="scan-mini" id="gScanSerial">${scanIconSVG()}</button></div>
+      ${a[F.serial]?`<div class="orig">Asal: ${esc(a[F.serial])}</div>`:''}</div>
+    <div class="gnote" id="gNote"></div>
+    <div class="gbtns">
+      <button class="gbtn ok ${st==='Tiada Isu'?'on':''}" data-gset="spec|Tiada Isu">✓ Tiada Isu</button>
+      <button class="gbtn save" id="gSave" disabled>💾 Simpan</button>
+    </div>`;
+  gShell(h);
+  const gb=$('#g-brand'),gm=$('#g-model'),gs=$('#g-serial');
+  const onIn=()=>{ const ch=gb.value.trim()!==(cb||'')||gm.value.trim()!==(cm||'')||gs.value.trim()!==(cs||''); $('#gSave').disabled=!ch; $('#gNote').textContent=ch?'Anda ubah nilai — tekan Simpan.':''; };
+  [gb,gm,gs].forEach(x=>x.addEventListener('input',onIn)); onIn();
+  $('#gScanSerial').onclick=()=>openScanner('capture',v=>{ gs.value=v; onIn(); },'any');
+  $('#gSave').onclick=async()=>{ setEditField(no,'brand',gb.value.trim(),a); setEditField(no,'model',gm.value.trim(),a); setEditField(no,'serial',gs.value.trim(),a); const oo=await gAudit(no); oo.semakan.spec='Dibetulkan'; await persistGuided(no,oo); toast('💾 Spesifikasi disimpan','ok'); guidedNext(); };
+}
+
+/* ---- Langkah 5: Gambar ---- */
+function gsGambar(no,a,o){
+  const st=(o.semakan||{}).gambar||'', pc=photoCache.get(no)||{};
+  const anyPhoto = a[F.g1]||a[F.g2] || MAIN_KINDS.concat(EXTRA_KINDS).some(k=>(o.photos&&o.photos[k])||(pc[k]&&(pc[k].url||pc[k].thumb)));
+  const chips=[];
+  if(a[F.g1]) chips.push(viewChip('Asal (Aset)',a[F.g1]));
+  if(a[F.g2]) chips.push(viewChip('Asal (Plate)',a[F.g2]));
+  for(const k of MAIN_KINDS.concat(EXTRA_KINDS)){ const u=(o.photos&&o.photos[k])||(pc[k]&&pc[k].url); if(u) chips.push(viewChip(PHOTO_KINDS[k].label,u)); else if(pc[k]&&pc[k].status==='sending') chips.push(`<span class="pchip send">⏳ ${esc(PHOTO_KINDS[k].label)}</span>`); }
+  const h=`<div class="gsec-h">📷 Gambar</div>
+    ${chips.length?`<div class="pchips">${chips.join('')}</div>`:'<div class="wz-none">Belum ada gambar.</div>'}
+    <button class="btn-photo" id="gUploadFoto">📸 Upload / Urus Gambar</button>
+    <div class="gbtns">
+      ${anyPhoto?`<button class="gbtn ok ${st==='Tiada Isu'?'on':''}" data-gset="gambar|Tiada Isu">✓ Tiada Isu (gambar ada)</button>`
+        :`<div class="orig">Sila upload sekurang-kurangnya satu gambar.</div>`}
+    </div>`;
+  gShell(h);
+}
+
+/* ---- Langkah 6: Remark ---- */
+function gsRemark(no,a,o){
+  const cur=o.note||'';
+  const h=`<div class="gsec-h">📝 Remark (pilihan)</div>
+    <div class="formrow"><label>Komen tentang aset ini</label>
+      <textarea id="g-remark" placeholder="Kosongkan jika tiada…">${esc(cur)}</textarea></div>
+    <div class="gbtns">
+      <button class="gbtn" id="gSkipRemark">⏭️ Skip</button>
+      <button class="gbtn save" id="gSaveRemark">💾 Simpan &amp; Teruskan</button>
+    </div>`;
+  gShell(h);
+  $('#gSkipRemark').onclick=async()=>{ const oo=await gAudit(no); oo.note=$('#g-remark').value.trim(); await persistGuided(no,oo); guidedNext(); };
+  $('#gSaveRemark').onclick=async()=>{ const oo=await gAudit(no); oo.note=$('#g-remark').value.trim(); await persistGuided(no,oo); toast('💾 Remark disimpan','ok'); guidedNext(); };
+}
+
+/* ---- Ringkasan + Hantar ---- */
+function renderGuidedSummary(){
+  const no=guidedAsset, a=ASSET_BY_NO.get(no.toUpperCase())||[], o=auditMap.get(no)||{semakan:{},edits:{}};
+  $('#guidedTitle').textContent='✅ Ringkasan — '+no;
+  $('#gProgBar').style.width='100%';
+  $('#gBack').style.visibility='visible'; $('#gBack').onclick=()=>{ guidedStep=6; renderGuidedStep(); };
+  $('#gFwd').style.visibility='hidden';
+  const sem=o.semakan||{}, ed=o.edits||{};
+  const pc=photoCache.get(no)||{};
+  let nFoto=0; for(const k of MAIN_KINDS.concat(EXTRA_KINDS)){ if((o.photos&&o.photos[k])||(pc[k]&&(pc[k].url||pc[k].thumb))) nFoto++; }
+  if(a[F.g1])nFoto++; if(a[F.g2])nFoto++;
+  // [label, status, nilai semasa, adakah-diubah]
+  const rows=[
+    ['No. UNIZA',       sem.uniza,  effVal(a,'uniza')||'(kosong)',  !!ed.uniza],
+    ['Lokasi',          sem.lokasi, effVal(a,'locno')||'(kosong)',  !!ed.locno],
+    ['Jenis Aset',      sem.jenis,  (a[F.typedesc]||'-')+(a[F.typecode]?` · ${a[F.typecode]}`:''), false],
+    ['Jenama/Model/Serial', sem.spec, [effVal(a,'brand'),effVal(a,'model'),effVal(a,'serial')].filter(Boolean).join(' · ')||'-', !!(ed.brand||ed.model||ed.serial)],
+    ['Gambar',          sem.gambar, nFoto?`${nFoto} gambar`:'Tiada', false]
+  ];
+  let h='<div class="gsec-h">Hasil semakan</div>';
+  for(const [lbl,st,val,changed] of rows){
+    const warn=st&&st.indexOf('Tiada Isu')<0&&st.indexOf('Dimuat')<0;
+    h+=`<div class="gsum"><span>${esc(lbl)}</span><b class="${warn?'warn':'ok'}">${esc(st||'—')}</b></div>
+        <div class="gsum-val">${changed?'✏️ ':''}${esc(val)}</div>`;
+  }
+  h+=`<div class="gsum"><span>Remark</span><b class="${o.note?'':'muted'}">${o.note?esc(o.note):'(tiada)'}</b></div>`;
+  h+=`<button class="btn-primary" id="gSubmit" style="margin-top:16px">✅ Hantar — Telah Diperiksa</button>`;
+  $('#guidedBody').innerHTML=h;
+  $('#gSubmit').onclick=()=>submitGuided(no);
+}
+
+async function submitGuided(no){
+  let o=await gAudit(no);
+  o.checked=true; o.checkedBy=getUser(); o.checkedAt=nowISO();
+  o.method='Berpandu'; o.guidedActive=false; o.guidedStep=0;
+  o.user=getUser(); o.deviceTime=nowISO(); o.dataStatus='local'; o.updatedAt=nowISO();
+  auditMap.set(no,o); await dbPut('audits',o);
+  closeOverlay('guidedModal'); guidedAsset=null;
+  rerenderCard(no); updateSummary(); toast('✅ Audit Berpandu selesai — Telah Diperiksa','ok');
+  pushAudit(no);
+}
+
+async function guidedBermasalah(no){
+  const oo=await gAudit(no); oo.semakan.jenis='Bermasalah'; await persistGuided(no,oo);
+  triggerPhoto(no,'jenisisu');   // buka kamera; selepas upload → renderGuidedStep
+}
+function guidedUploadFoto(no){ openPhotoWizard(no,false); }
+
+/* delegated clicks dalam Audit Berpandu */
+$('#guidedBody').addEventListener('click',async e=>{
+  const no=guidedAsset; if(!no) return; const t=e.target;
+  const setEl=t.closest('[data-gset]');
+  if(setEl){ const p=setEl.dataset.gset.split('|'); const oo=await gAudit(no); oo.semakan[p[0]]=p[1]; await persistGuided(no,oo); guidedNext(); return; }   // tekan status → terus ke langkah seterusnya
+  if(t.closest('[data-gbermasalah]')){ guidedBermasalah(no); return; }
+  if(t.closest('#gUploadFoto')){ guidedUploadFoto(no); return; }
+  if(t.closest('[data-gview]')){ const u=t.closest('[data-gview]').dataset.gview; if(u)window.open(u,'_blank','noopener'); return; }
+});
+
+/* ============================================================
    Wizard Gambar (3 slot utama + sehingga 2 tambahan)
    ============================================================ */
 function openPhotoWizard(no,required){
@@ -1026,6 +1477,7 @@ function renderWizard(no){
     if(wizardRequired){ const miss=requiredPhotoMissing(no); if(miss){ toast('Gambar wajib belum lengkap: '+miss,'err'); return; } }
     closeOverlay('photoModal'); wizardAsset=null; rerenderCard(no);
     if($('#regModal').classList.contains('show')) updateRegPhotoStat(no);
+    if($('#guidedModal').classList.contains('show')&&guidedAsset===no) guidedMaybeAdvance(no,5);
   };
   if($('#wzAdd')) $('#wzAdd').onclick=()=>{ wizardReveal=Math.min(2,wizardKinds(no).length-MAIN_KINDS.length+1); renderWizard(no); };
 }
@@ -1101,9 +1553,15 @@ async function handlePhoto(no,kind,file){
     let o=await getOrInitAudit(no); o.user=getUser(); o.updatedAt=nowISO();
     if(o.photoTiada) delete o.photoTiada[kind];   // batalkan 'Tiada' jika ada
     if(o.dataStatus==='confirmed') o.dataStatus='local';
+    // Audit Berpandu: muat naik gambar (slot biasa) → tandakan langkah Gambar selesai
+    if(guidedAsset===no && MAIN_KINDS.concat(EXTRA_KINDS).indexOf(kind)>-1){ o.semakan=o.semakan||{}; o.semakan.gambar='Dimuat naik'; }
     auditMap.set(no,o); await persistAudit(no,o);
     if(wizardAsset===no) renderWizard(no);
     if($('#regModal').classList.contains('show')) updateRegPhotoStat(no);
+    if($('#guidedModal').classList.contains('show')&&guidedAsset===no){
+      if(kind==='jenisisu') guidedMaybeAdvance(no,3);   // Bermasalah → ada bukti → maju
+      else renderGuidedStep();                          // gambar slot biasa → maju bila tekan Selesai
+    }
     rerenderCard(no); updateSummary();
     toast('📷 '+PHOTO_KINDS[kind].label+' disimpan, sedang dihantar…');
     pushPhoto(id);
@@ -1224,6 +1682,7 @@ function buildUpsertPayload(o){
     edits:o.edits||{},
     checked:!!o.checked, checkedBy:o.checkedBy||'', checkedAt:o.checkedAt||'',
     note:o.note||'',
+    method:o.method||'', semakan:o.semakan||{},
     user:o.user||getUser(), deviceTime:o.deviceTime||nowISO()
   };
   // Nota: gambar TIDAK dihantar dalam upsert — dikendali khas oleh tindakan 'photo'
@@ -1250,7 +1709,6 @@ async function pushAudit(no){
   rerenderCard(no); updateSummary(); syncing.delete(no);
 }
 
-const PHOTO_COL={aset:'Gambar No. Aset',nameplate:'Gambar Nameplate',keseluruhan:'Gambar Keseluruhan',tambahan1:'Gambar Tambahan 1',tambahan2:'Gambar Tambahan 2'};
 async function pushPhoto(id){
   if(!getEndpoint()) return;
   let rec=await dbGet('photos',id); if(!rec||!rec.blob) return;
@@ -1280,6 +1738,7 @@ async function pushPhoto(id){
       setPhotoCache(rec.asset,rec.kind,{status:'confirmed',url,thumb:rec.thumb});
       rec.status='confirmed'; await dbPut('photos',rec);
       if(wizardAsset===rec.asset) renderWizard(rec.asset);
+      if($('#guidedModal').classList.contains('show')&&guidedAsset===rec.asset) renderGuidedStep();
       rerenderCard(rec.asset); updateSummary();
       toast('✅ '+(PHOTO_KINDS[rec.kind].label)+' dimuat naik','ok');
     } else {
@@ -1306,6 +1765,8 @@ async function syncAll(manual){
   for(const p of photos){ if(p.status==='local'||p.status==='failed'){ n++; pushPhoto(p.id); } }
   await pullRemote(true);       // tarik audit pengguna lain (tab Audit)
   await pullNewAssets(true);    // tarik aset baharu pengguna lain (tab Aset Baharu)
+  lastSyncAt=Date.now(); localStorage.setItem('lastSyncAt',lastSyncAt);
+  if(dashOpen) renderDashboard();
   if(manual) toast(n?`⟳ Menyegerak ${n} rekod & menarik data pusat…`:'⬇️ Data pusat dikemas kini','ok');
 }
 
@@ -1366,12 +1827,18 @@ function rowToOverlay(row){
     checkedAt: row['Masa Diperiksa']||'',
     edits: edits||{},
     note: row['Catatan']||'',
+    method: row.method||row['Kaedah Audit']||'',
+    semakan: (row.semakan)|| {
+      uniza:row['Semakan UNIZA']||'', lokasi:row['Semakan Lokasi']||'', jenis:row['Semakan Jenis Aset']||'',
+      spec:row['Semakan Spesifikasi']||'', gambar:row['Semakan Gambar']||''
+    },
     photos: {
       aset:        (row.photos&&row.photos.aset)        ||row['Gambar No. Aset']    ||'',
       nameplate:   (row.photos&&row.photos.nameplate)   ||row['Gambar Nameplate']   ||'',
       keseluruhan: (row.photos&&row.photos.keseluruhan) ||row['Gambar Keseluruhan'] ||'',
       tambahan1:   (row.photos&&row.photos.tambahan1)   ||row['Gambar Tambahan 1']  ||'',
-      tambahan2:   (row.photos&&row.photos.tambahan2)   ||row['Gambar Tambahan 2']  ||''
+      tambahan2:   (row.photos&&row.photos.tambahan2)   ||row['Gambar Tambahan 2']  ||'',
+      jenisisu:    (row.photos&&row.photos.jenisisu)    ||row['Gambar Jenis Aset (Isu)']||''
     },
     user: row.user||row['User']||'',
     dataStatus:'confirmed', remote:true, updatedAt:nowISO()
@@ -1388,8 +1855,8 @@ async function pullRemote(silent){
   for(const row of r.rows){
     const o=rowToOverlay(row); if(!o.asset) continue;
     const local=auditMap.get(o.asset);
-    // Jangan timpa kerja tempatan yang belum sync (local/sending).
-    if(local && (local.dataStatus==='local'||local.dataStatus==='sending')) continue;
+    // Jangan timpa kerja tempatan yang belum sync (local/sending/draft audit berpandu).
+    if(local && (local.dataStatus==='local'||local.dataStatus==='sending'||local.dataStatus==='draft'||local.guidedActive)) continue;
     auditMap.set(o.asset,o); await dbPut('audits',o);
     for(const k of MAIN_KINDS.concat(EXTRA_KINDS)){ if(o.photos[k]) setPhotoCache(o.asset,k,{status:'confirmed',url:o.photos[k]}); }
     changed++;
@@ -1444,6 +1911,7 @@ $('#list').addEventListener('click',e=>{
   if(t.id==='moreBtn'){ renderCount+=CONFIG.RENDER_LIMIT; render(); return; }
   const toggle=t.closest('[data-toggle]');
   const card=t.closest('.card');
+  if(t.closest('[data-guided]')){ openGuided(t.closest('[data-guided]').dataset.guided); return; }
   if(t.closest('[data-tick]')){ doTick(t.closest('[data-tick]').dataset.tick); return; }
   if(t.closest('[data-edit]')){ openEdit(t.closest('[data-edit]').dataset.edit); return; }
   if(t.closest('[data-ppm]')){ openPPM(t.closest('[data-ppm]').dataset.ppm); return; }
@@ -1472,8 +1940,8 @@ function toggleCard(no){
   }
 }
 
-/* FAB tick */
-$('#fabBtn').onclick=()=>{ if(expandedAsset) doTick(expandedAsset); };
+/* FAB = Mula Audit Berpandu (cara utama) */
+$('#fabBtn').onclick=()=>{ if(expandedAsset) openGuided(expandedAsset); };
 
 /* PPM modal */
 function openPPM(no){
@@ -1521,6 +1989,7 @@ $('#setSave').onclick=()=>{
 };
 $('#setSyncAll').onclick=()=>{ closeOverlay('settingsModal'); syncAll(true); };
 $('#btnSync').onclick=()=>syncAll(true);
+$('#btnDash').onclick=()=>toggleDash();
 
 function updateEndpointWarn(){ $('#endpointWarn').classList.toggle('hide',!!getEndpoint()); }
 
@@ -1540,27 +2009,44 @@ window.addEventListener('offline',updateNet);
    Scanner (BarcodeDetector native -> fallback ZXing)
    ============================================================ */
 let scanStream=null, scanLoop=null, zxingReader=null, scanActive=false;
-let scanMode='search', scanCaptureCb=null;
-$('#scanBtn').onclick=()=>openScanner('search');
+let scanMode='search', scanCaptureCb=null, scanKind='any';
+
+/* Set format ikut kegunaan:
+   qr      = QR sahaja (scanner page mula → No. Aset)
+   barcode = barcode 1D sahaja (No. UNIZA)
+   any     = QR + barcode (No. Serial) */
+const SCAN_SETS={
+  qr:     {native:['qr_code'], accept:f=>f==='QR_CODE', hint:'Halakan ke QR No. Aset sahaja'},
+  barcode:{native:['code_128','code_39','ean_13','ean_8','upc_a','upc_e','itf','codabar','code_93'], accept:f=>f!=='QR_CODE', hint:'Halakan ke BARCODE'},
+  any:    {native:['qr_code','code_128','code_39','ean_13','ean_8','upc_a','upc_e','itf','codabar','code_93'], accept:()=>true, hint:'Halakan ke QR atau Barcode'}
+};
+
+$('#scanBtn').onclick=()=>openScanner('search',null,'qr');   // page mula = QR sahaja
 $('#scanClose').onclick=closeScanner;
 
-async function openScanner(mode,cb){
-  scanMode=mode||'search'; scanCaptureCb=cb||null;
+async function openScanner(mode,cb,kind){
+  scanMode=mode||'search'; scanCaptureCb=cb||null; scanKind=kind||'any';
+  const set=SCAN_SETS[scanKind]||SCAN_SETS.any;
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
     toast('Kamera tidak disokong pelayar ini','err'); return; }
-  $('#scanHint').textContent = scanMode==='capture'
-    ? 'Halakan ke BARCODE untuk No. UNIZA' : 'Halakan ke QR (No. Aset) atau Barcode (No. UNIZA)';
+  $('#scanHint').textContent=set.hint;
   $('#scanner').classList.add('show'); scanActive=true;
   try{
     scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
     const v=$('#scanVideo'); v.srcObject=scanStream; await v.play();
     if('BarcodeDetector' in window){
-      const fmts=await BarcodeDetector.getSupportedFormats().catch(()=>[]);
-      const det=new BarcodeDetector({formats:fmts.length?fmts:['qr_code','code_128','code_39','ean_13','ean_8','upc_a','itf','codabar']});
-      $('#scanHint').textContent='Mengimbas… (QR=No.Aset · Barcode=No.UNIZA)';
+      const supported=await BarcodeDetector.getSupportedFormats().catch(()=>[]);
+      const want=set.native.filter(f=>!supported.length||supported.indexOf(f)>-1);
+      let det; try{ det=new BarcodeDetector({formats:want.length?want:set.native}); }catch(e){ det=new BarcodeDetector(); }
       const tick=async()=>{
         if(!scanActive) return;
-        try{ const codes=await det.detect(v); if(codes&&codes.length){ onScan(codes[0].rawValue); return; } }catch(e){}
+        try{
+          const codes=await det.detect(v);
+          if(codes&&codes.length){
+            const c=codes.find(x=>set.accept(String(x.format||'').toUpperCase()));
+            if(c){ onScan(c.rawValue); return; }
+          }
+        }catch(e){}
         scanLoop=requestAnimationFrame(tick);
       };
       tick();
@@ -1573,6 +2059,7 @@ async function openScanner(mode,cb){
 }
 
 async function startZXing(video){
+  const set=SCAN_SETS[scanKind]||SCAN_SETS.any;
   $('#scanHint').textContent='Memuatkan pengimbas… (perlu internet kali pertama)';
   try{
     if(!window.ZXing){
@@ -1581,8 +2068,13 @@ async function startZXing(video){
         s.onload=res; s.onerror=()=>rej(new Error('muat ZXing gagal')); document.head.appendChild(s);});
     }
     zxingReader=new ZXing.BrowserMultiFormatReader();
-    $('#scanHint').textContent='Mengimbas… (QR=No.Aset · Barcode=No.UNIZA)';
-    zxingReader.decodeFromVideoElement(video,(result,err)=>{ if(result&&scanActive) onScan(result.getText()); });
+    $('#scanHint').textContent=set.hint;
+    zxingReader.decodeFromVideoElement(video,(result,err)=>{
+      if(result&&scanActive){
+        const fmt=String((ZXing.BarcodeFormat&&ZXing.BarcodeFormat[result.getBarcodeFormat()])||'').toUpperCase();
+        if(set.accept(fmt)) onScan(result.getText());
+      }
+    });
   }catch(e){ toast('Pengimbas tidak tersedia luar talian. Guna carian manual.','err'); closeScanner(); }
 }
 
@@ -1592,14 +2084,17 @@ function onScan(text){
   if(navigator.vibrate) navigator.vibrate(80);
   const raw=String(text).trim(), key=raw.toUpperCase();
   closeScanner();
-  // Mod tangkap (cth isi No. UNIZA dalam borang edit)
+  // Mod tangkap (cth isi No. UNIZA / Serial dalam borang)
   if(scanMode==='capture'){ const cb=scanCaptureCb; scanMode='search'; scanCaptureCb=null; if(cb) cb(raw); return; }
   let a=ASSET_BY_NO.get(key)||ASSET_BY_UNIZA.get(key);
-  if(!a){ // padanan separa (kadang QR ada ruang/awalan)
-    const m=key.match(/SZA\d{3,}[A-Z]?/); if(m) a=ASSET_BY_NO.get(m[0]);
-  }
-  if(a){ openFound(a[F.asset]); }
-  else { toast('❌ Tiada padanan untuk: '+raw,'err'); }
+  if(!a){ const m=key.match(/SZA\d{3,}[A-Z]?/); if(m) a=ASSET_BY_NO.get(m[0]); }
+  if(a){ openFound(a[F.asset]); return; }
+  // Tiada padanan → bawa nilai ke carian & cadang DAFTAR (tak payah taip balik)
+  const sugg=normalizeAssetNo(raw)||raw;
+  curQuery=sugg; $('#search').value=sugg; $('#clrBtn').style.display='block';
+  curFilter='all'; $$('.chip').forEach(x=>x.classList.toggle('on',x.dataset.f==='all'));
+  renderCount=CONFIG.RENDER_LIMIT; render();
+  toast('❓ '+raw+' tiada dalam DB — boleh daftar aset baharu','');
 }
 
 function openFound(no){

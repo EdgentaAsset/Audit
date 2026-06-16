@@ -60,11 +60,27 @@ pengguna dapat data terbaharu secara automatik.
 
 ### Lajur output Sheet (tab "Audit")
 `Timestamp · Masa Peranti · ASSET NO · NO. UNIZA · Telah Diperiksa · Nama Pemeriksa ·
-Masa Diperiksa · No.Lokasi(edit) · Nama Lokasi(edit) · Jenama(edit) · Model(edit) ·
-No.Serial(edit) · Buatan(edit) · Pengilang(edit) · Pembetulan(JSON) · Catatan ·
-Link Gambar Aset · Link Gambar Plate · User · Status Sync`
+Masa Diperiksa · Kaedah Audit · Lokasi(edit) · Jenama(edit) · Model(edit) · No.Serial(edit) ·
+Pembetulan(JSON) · Catatan · Semakan UNIZA · Semakan Lokasi · Semakan Jenis Aset ·
+Semakan Spesifikasi · Semakan Gambar · Gambar No. Aset · Gambar Nameplate · Gambar Keseluruhan ·
+Gambar Tambahan 1 · Gambar Tambahan 2 · Gambar Jenis Aset (Isu) · User · Status Sync`
+
+**Audit Berpandu:** lajur `Kaedah Audit`=Berpandu + 5 lajur `Semakan …` merekod hasil setiap bahagian
+(Tiada Isu / Tiada Tagging / Dibetulkan / Bermasalah). Gambar bukti "Bermasalah Jenis Aset" → lajur
+`Gambar Jenis Aset (Isu)`.
 
 **UPSERT ikut ASSET NO** → 1 aset = 1 baris (tiada duplicate, retry selamat, guna `LockService`).
+Gambar (5 slot berlabel) dikendali oleh tindakan *photo* sahaja — tick/edit tak menyentuh lajur gambar.
+
+> ⚠️ **Bila kemas kini Code.gs:** jika tab `Audit` lama wujud dengan lajur lama, **padam tab itu dahulu**
+> (skrip akan tulis semula header baharu), kemudian **Deploy → Manage deployments → Edit → New version**.
+
+### Tab "Aset Baharu" (aset yang didaftar pengguna)
+Aset yang **tiada dalam master** (didaftar melalui butang *➕ Daftar Aset Baharu*) masuk tab **berasingan
+`Aset Baharu`** (dicipta automatik). Lajur: `Timestamp · Masa Peranti · ASSET NO · NO. UNIZA · Lokasi ·
+Jenama · Model · No. Serial · Catatan · Telah Diperiksa · Nama Pemeriksa · Gambar No.Aset · Gambar Nameplate ·
+Gambar Keseluruhan · Gambar Tambahan 1 · Gambar Tambahan 2 · User · Status Sync`.
+Nameplate "TIADA" bermaksud aset itu memang tiada nameplate (disahkan pemeriksa).
 
 ---
 

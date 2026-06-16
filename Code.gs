@@ -27,11 +27,33 @@ var FOLDER_NAME = "HoSZA Audit Foto";
 /* Susunan lajur output Sheet */
 var HEADERS = [
   "Timestamp", "Masa Peranti", "ASSET NO", "NO. UNIZA",
-  "Telah Diperiksa", "Nama Pemeriksa", "Masa Diperiksa",
-  "No. Lokasi (edit)", "Nama Lokasi (edit)", "Jenama (edit)", "Model (edit)",
-  "No. Serial (edit)", "Buatan (edit)", "Pengilang (edit)",
+  "Telah Diperiksa", "Nama Pemeriksa", "Masa Diperiksa", "Kaedah Audit",
+  "Lokasi (edit)", "Jenama (edit)", "Model (edit)", "No. Serial (edit)",
   "Pembetulan (JSON)", "Catatan",
-  "Link Gambar Aset", "Link Gambar Plate",
+  "Semakan UNIZA", "Semakan Lokasi", "Semakan Jenis Aset", "Semakan Spesifikasi", "Semakan Gambar",
+  "Gambar No. Aset", "Gambar Nameplate", "Gambar Keseluruhan",
+  "Gambar Tambahan 1", "Gambar Tambahan 2", "Gambar Jenis Aset (Isu)",
+  "User", "Status Sync"
+];
+
+/* Indeks lajur gambar (0-based) ikut HEADERS di atas */
+var PHOTO_COL = { aset: 19, nameplate: 20, keseluruhan: 21, tambahan1: 22, tambahan2: 23, jenisisu: 24 };
+
+/* Nama lajur gambar (untuk cari lajur secara dinamik dalam mana-mana sheet) */
+var PHOTO_HEADER = {
+  aset: "Gambar No. Aset", nameplate: "Gambar Nameplate", keseluruhan: "Gambar Keseluruhan",
+  tambahan1: "Gambar Tambahan 1", tambahan2: "Gambar Tambahan 2",
+  jenisisu: "Gambar Jenis Aset (Isu)"
+};
+
+/* ===== Sheet ASET BAHARU (aset yang didaftar pengguna, tiada dalam master) ===== */
+var NEW_SHEET_NAME = "Aset Baharu";
+var NEW_HEADERS = [
+  "Timestamp", "Masa Peranti", "ASSET NO", "NO. UNIZA",
+  "Lokasi", "Jenama", "Model", "No. Serial", "Catatan",
+  "Telah Diperiksa", "Nama Pemeriksa",
+  "Gambar No. Aset", "Gambar Nameplate", "Gambar Keseluruhan",
+  "Gambar Tambahan 1", "Gambar Tambahan 2",
   "User", "Status Sync"
 ];
 
@@ -53,8 +75,9 @@ function doPost(e) {
     var action = body.action || "upsert";
     var p = body.payload || {};
 
-    if (action === "photo")  return json_(handlePhoto_(p));
-    if (action === "delete") return json_(handleDelete_(p));
+    if (action === "photo")    return json_(handlePhoto_(p));
+    if (action === "delete")   return json_(handleDelete_(p));
+    if (action === "newasset") return json_(handleNewAsset_(p));
     return json_(handleUpsert_(p));
   } catch (err) {
     return json_({ ok: false, error: String(err) });
@@ -73,6 +96,12 @@ function doGet(e) {
       var asset = e.parameter.asset || "";
       var row = findRowObject_(asset);
       out = { ok: true, found: !!row, asset: asset, row: row || null };
+    } else if (action === "getnew") {
+      var an = e.parameter.asset || "";
+      var rn = findRowObjectNew_(an);
+      out = { ok: true, found: !!rn, asset: an, row: rn || null };
+    } else if (action === "allnew") {
+      out = { ok: true, rows: getAllNew_() };
     } else {
       out = { ok: true, rows: getAllObjects_() };
     }
@@ -89,6 +118,7 @@ function handleUpsert_(p) {
   if (!assetNo) return { ok: false, error: "no-asset" };
 
   var edits = p.edits || {};
+  var sem = p.semakan || {};
   var rowVals = [
     new Date(),                          // Timestamp
     p.deviceTime || "",                  // Masa Peranti
@@ -97,22 +127,24 @@ function handleUpsert_(p) {
     p.checked ? "Ya" : "",               // Telah Diperiksa
     p.checked ? (p.checkedBy || p.user || "") : "", // Nama Pemeriksa
     p.checked ? (p.checkedAt || "") : "",// Masa Diperiksa
-    edits.locno || "", edits.locname || "", edits.brand || "", edits.model || "",
-    edits.serial || "", edits.make || "", edits.manuf || "",
+    p.method || "",                      // Kaedah Audit
+    edits.locno || "", edits.brand || "", edits.model || "", edits.serial || "",
     Object.keys(edits).length ? JSON.stringify(edits) : "", // Pembetulan JSON
     p.note || "",                        // Catatan
-    p.photoAssetUrl || "",               // Link Gambar Aset
-    p.photoPlateUrl || "",               // Link Gambar Plate
+    sem.uniza || "", sem.lokasi || "", sem.jenis || "", sem.spec || "", sem.gambar || "", // Semakan x5
+    "", "", "", "", "", "",              // 6 lajur gambar — dipelihara di bawah
     p.user || "",                        // User
     "Disahkan"                           // Status Sync
   ];
 
   var rowIndex = findRow_(sheet, assetNo);
   if (rowIndex > 0) {
-    // UPSERT: kekalkan link gambar sedia ada jika upsert ini tidak bawa link baharu
+    // UPSERT: gambar dikendali HANYA oleh tindakan 'photo' — kekalkan nilai sedia ada.
     var existing = sheet.getRange(rowIndex, 1, 1, HEADERS.length).getValues()[0];
-    if (!rowVals[16] && existing[16]) rowVals[16] = existing[16]; // Link Gambar Aset
-    if (!rowVals[17] && existing[17]) rowVals[17] = existing[17]; // Link Gambar Plate
+    for (var c = 19; c <= 24; c++) rowVals[c] = existing[c];
+    // Jika upsert ini tak bawa nilai semakan (cth tick/edit biasa), kekalkan yang sedia ada.
+    for (var s = 14; s <= 18; s++) { if (!rowVals[s] && existing[s]) rowVals[s] = existing[s]; }
+    if (!rowVals[7] && existing[7]) rowVals[7] = existing[7]; // Kaedah Audit
     sheet.getRange(rowIndex, 1, 1, HEADERS.length).setValues([rowVals]);
   } else {
     sheet.appendRow(rowVals);
@@ -123,9 +155,38 @@ function handleUpsert_(p) {
 
 function handlePhoto_(p) {
   var assetNo = String(p.asset || "").trim();
-  var kind = p.kind === "plate" ? "plate" : "asset";
-  if (!assetNo || !p.dataB64) return { ok: false, error: "bad-photo" };
+  var kind = p.kind;
+  var colName = PHOTO_HEADER[kind];
+  if (!assetNo || !colName) return { ok: false, error: "bad-kind" };
 
+  var isNew = p.sheet === "baharu";
+  var sheet = isNew ? getNewSheet_() : getSheet_();
+  var headers = isNew ? NEW_HEADERS : HEADERS;
+  var col1 = headers.indexOf(colName) + 1;   // 1-based
+
+  var rowIndex = findRow_(sheet, assetNo);
+  if (rowIndex < 1) {
+    var blank = headers.map(function () { return ""; });
+    blank[0] = new Date(); blank[2] = assetNo;
+    blank[headers.length - 2] = p.user || ""; blank[headers.length - 1] = "Disahkan";
+    sheet.appendRow(blank);
+    rowIndex = sheet.getLastRow();
+  }
+
+  // Nameplate "Tiada" — tulis label supaya admin tahu ia memang tiada
+  if (p.tiada) {
+    sheet.getRange(rowIndex, col1).setValue("TIADA");
+    sheet.getRange(rowIndex, 1).setValue(new Date());
+    return { ok: true, asset: assetNo, kind: kind, tiada: true };
+  }
+  // Buang gambar
+  if (p.remove) {
+    sheet.getRange(rowIndex, col1).setValue("");
+    sheet.getRange(rowIndex, 1).setValue(new Date());
+    return { ok: true, asset: assetNo, kind: kind, removed: true };
+  }
+
+  if (!p.dataB64) return { ok: false, error: "no-data" };
   var folder = getFolder_();
   var bytes = Utilities.base64Decode(p.dataB64);
   var blob = Utilities.newBlob(bytes, p.mimeType || "image/jpeg",
@@ -134,19 +195,32 @@ function handlePhoto_(p) {
   try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (e) {}
   var url = file.getUrl();
 
-  // upsert link ke baris aset
-  var sheet = getSheet_();
-  var rowIndex = findRow_(sheet, assetNo);
-  if (rowIndex < 1) {
-    var blank = HEADERS.map(function () { return ""; });
-    blank[0] = new Date(); blank[2] = assetNo; blank[18] = p.user || ""; blank[19] = "Disahkan";
-    sheet.appendRow(blank);
-    rowIndex = sheet.getLastRow();
-  }
-  var col = kind === "asset" ? 17 : 18; // 1-based: Link Gambar Aset=17, Plate=18
-  sheet.getRange(rowIndex, col).setValue(url);
+  sheet.getRange(rowIndex, col1).setValue(url);
   sheet.getRange(rowIndex, 1).setValue(new Date());
   return { ok: true, asset: assetNo, kind: kind, url: url };
+}
+
+/* ===== Aset Baharu (upsert ke tab "Aset Baharu") ===== */
+function handleNewAsset_(p) {
+  var assetNo = String(p.asset || "").trim();
+  if (!assetNo) return { ok: false, error: "no-asset" };
+  var sheet = getNewSheet_();
+  var rowVals = [
+    new Date(), p.deviceTime || "", assetNo, p.uniza || "",
+    p.location || "", p.brand || "", p.model || "", p.serial || "", p.note || "",
+    p.checked ? "Ya" : "", p.checkedBy || p.user || "",
+    "", "", "", "", "",                 // 5 lajur gambar — dikendali oleh 'photo'
+    p.user || "", "Disahkan"
+  ];
+  var rowIndex = findRow_(sheet, assetNo);
+  if (rowIndex > 0) {
+    var existing = sheet.getRange(rowIndex, 1, 1, NEW_HEADERS.length).getValues()[0];
+    for (var c = 11; c <= 15; c++) rowVals[c] = existing[c];  // pelihara lajur gambar
+    sheet.getRange(rowIndex, 1, 1, NEW_HEADERS.length).setValues([rowVals]);
+  } else {
+    sheet.appendRow(rowVals);
+  }
+  return { ok: true, asset: assetNo };
 }
 
 function handleDelete_(p) {
@@ -165,6 +239,18 @@ function getSheet_() {
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(HEADERS);
     sheet.getRange(1, 1, 1, HEADERS.length).setFontWeight("bold");
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function getNewSheet_() {
+  var ss = SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(NEW_SHEET_NAME);
+  if (!sheet) sheet = ss.insertSheet(NEW_SHEET_NAME);
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(NEW_HEADERS);
+    sheet.getRange(1, 1, 1, NEW_HEADERS.length).setFontWeight("bold");
     sheet.setFrozenRows(1);
   }
   return sheet;
@@ -195,8 +281,15 @@ function rowToObject_(vals) {
   // alias mesra-klien
   o.asset = vals[2]; o.uniza = vals[3];
   o.checked = vals[4] === "Ya";
-  o.photoAssetUrl = vals[16]; o.photoPlateUrl = vals[17];
-  o.user = vals[18];
+  o.method = vals[7];
+  o.semakan = {
+    uniza: vals[14], lokasi: vals[15], jenis: vals[16], spec: vals[17], gambar: vals[18]
+  };
+  o.photos = {
+    aset: vals[19], nameplate: vals[20], keseluruhan: vals[21],
+    tambahan1: vals[22], tambahan2: vals[23], jenisisu: vals[24]
+  };
+  o.user = vals[25];
   return o;
 }
 
@@ -216,6 +309,34 @@ function getAllObjects_() {
   return vals.map(rowToObject_);
 }
 
+/* ===== Aset Baharu: objek baris ===== */
+function rowToObjectNew_(vals) {
+  var o = {};
+  for (var i = 0; i < NEW_HEADERS.length; i++) o[NEW_HEADERS[i]] = vals[i];
+  o.asset = vals[2]; o.uniza = vals[3];
+  o.checked = vals[9] === "Ya";
+  o.photos = {
+    aset: vals[11], nameplate: vals[12], keseluruhan: vals[13],
+    tambahan1: vals[14], tambahan2: vals[15]
+  };
+  o.user = vals[16];
+  return o;
+}
+function findRowObjectNew_(assetNo) {
+  var sheet = getNewSheet_();
+  var r = findRow_(sheet, assetNo);
+  if (r < 1) return null;
+  var vals = sheet.getRange(r, 1, 1, NEW_HEADERS.length).getValues()[0];
+  return rowToObjectNew_(vals);
+}
+function getAllNew_() {
+  var sheet = getNewSheet_();
+  var last = sheet.getLastRow();
+  if (last < 2) return [];
+  var vals = sheet.getRange(2, 1, last - 1, NEW_HEADERS.length).getValues();
+  return vals.map(rowToObjectNew_);
+}
+
 /* ================= Output ================= */
 function json_(obj) {
   return ContentService.createTextOutput(JSON.stringify(obj))
@@ -232,6 +353,7 @@ function jsonp_(obj, cb) {
 /* Uji pantas dari editor (Run > testSetup) */
 function testSetup() {
   var s = getSheet_();
+  var n = getNewSheet_();
   var f = getFolder_();
-  Logger.log("Sheet OK: " + s.getName() + " | Folder OK: " + f.getName());
+  Logger.log("Sheet OK: " + s.getName() + " | Aset Baharu OK: " + n.getName() + " | Folder OK: " + f.getName());
 }
