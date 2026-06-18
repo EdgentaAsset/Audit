@@ -221,6 +221,28 @@ body{padding-bottom:calc(62px + env(safe-area-inset-bottom))}
 .acct-name{font-size:18px;font-weight:800}
 .acct-role{font-size:12px;opacity:.88;text-transform:capitalize;margin-top:3px}
 .acct-btn{width:100%;justify-content:flex-start;text-align:left;margin-bottom:10px}
+
+/* ===== Panel Tapis (#1 Filter) ===== */
+.filterbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px var(--sp-4) 2px}
+.tapis-btn{display:inline-flex;align-items:center;gap:6px;height:34px;padding:0 14px;cursor:pointer;
+  background:var(--blue-50);color:var(--blue);font-weight:800;font-size:13px;border-radius:var(--r-full);border:1px solid var(--blue-100)}
+.tapis-btn .ti-ic{font-size:14px}
+.tapis-n{display:inline-flex;align-items:center;justify-content:center;min-width:18px;height:18px;
+  padding:0 5px;background:var(--blue);color:#fff;border-radius:var(--r-full);font-size:11px;margin-left:2px}
+.active-chips{display:flex;align-items:center;gap:6px;flex-wrap:wrap;flex:1;min-width:0}
+.achip{display:inline-flex;align-items:center;gap:6px;height:28px;padding:0 6px 0 11px;cursor:pointer;
+  background:var(--card);border:1px solid var(--gray-300);border-radius:var(--r-full);font-size:12px;font-weight:600;color:var(--ink-soft)}
+.achip b{color:var(--gray-400);font-weight:700;font-size:11px}
+.result-count{font-size:12px;color:var(--muted);font-weight:700;margin-left:auto;white-space:nowrap}
+.fgrp{margin-bottom:18px}
+.fgrp-h{font-size:11.5px;font-weight:800;color:var(--label);letter-spacing:.4px;text-transform:uppercase;margin-bottom:9px}
+.opts{display:flex;flex-direction:column;gap:9px}
+.opts .opt{display:flex;align-items:center;gap:10px;font-size:14px;color:var(--ink-soft);font-weight:600;cursor:pointer}
+.opts input[type=checkbox],.opts input[type=radio]{width:18px;height:18px;accent-color:var(--blue);flex:0 0 auto}
+.opts select{flex:1;min-height:38px;border:1px solid var(--gray-300);border-radius:var(--r-md);padding:0 8px}
+.deptscroll{max-height:190px;overflow:auto;border:1px solid var(--gray-200);border-radius:var(--r-md);padding:11px}
+.tapis-foot{display:flex;gap:10px;padding:12px var(--sp-4);border-top:1px solid var(--gray-200);position:sticky;bottom:0;background:var(--card)}
+.tapis-foot .btn-primary{flex:1}
 .detgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px 14px}
 .detgrid .field.full{grid-column:1/-1}
 
@@ -532,11 +554,10 @@ body{padding-bottom:calc(62px + env(safe-area-inset-bottom))}
 
 <!-- ===== Tab: Senarai ===== -->
 <div id="view-senarai" class="tabview">
-  <div class="filters" id="filters">
-    <button class="chip on" data-f="all">Semua<span class="n" id="c-all"></span></button>
-    <button class="chip" data-f="unsynced">Belum Sync<span class="n" id="c-unsynced"></span></button>
-    <button class="chip" data-f="checked">Diperiksa<span class="n" id="c-checked"></span></button>
-    <button class="chip" data-f="fixed">Pembetulan<span class="n" id="c-fixed"></span></button>
+  <div class="filterbar" id="filterbar">
+    <button class="tapis-btn" id="tapisBtn"><span class="ti-ic">⛃</span> Tapis<span class="tapis-n hide" id="tapisN"></span></button>
+    <div class="active-chips" id="activeChips"></div>
+    <span class="result-count" id="resultCount"></span>
   </div>
   <main id="list">
     <div class="loading"><div class="spin"></div>Memuatkan data aset…</div>
@@ -571,6 +592,18 @@ body{padding-bottom:calc(62px + env(safe-area-inset-bottom))}
   <button class="navbtn" data-tab="aktiviti"><span class="ni">⚡</span><span>Aktiviti</span><span class="navdot hide" id="navDot"></span></button>
   <button class="navbtn" data-tab="akaun"><span class="ni">👤</span><span>Akaun</span></button>
 </nav>
+
+<!-- Panel Tapis (#1 Filter) -->
+<div class="overlay" id="tapisModal">
+  <div class="sheet">
+    <div class="sheet-h"><b>⛃ Tapis Aset</b><button class="x" data-close>✕</button></div>
+    <div class="sheet-b" id="tapisBody"></div>
+    <div class="tapis-foot">
+      <button class="btn-ghost" id="tapisReset">Set semula</button>
+      <button class="btn-primary" id="tapisApply">Tunjuk hasil</button>
+    </div>
+  </div>
+</div>
 
 <!-- ===== Modals ===== -->
 <div class="overlay c" id="authModal">
@@ -984,29 +1017,133 @@ function viewChip(label,url){ return `<span class="pchip" data-view="${esc(url)}
 // Medan yang boleh dicari: No.Aset, UNIZA, No.Lokasi, Jabatan, Jenama, Serial,
 // Jenis Aset, Kod Jabatan, Pengilang.
 const SEARCH_KEYS=['asset','uniza','locno','deptname','brand','serial','typedesc','userdept','manuf'];
+/* ===== Panel Tapis (#1) ===== */
+const filters2={ status:new Set(), dept:new Set(), workgroup:new Set(),
+  photo:'', mine:false, auditor:'', ppm:'', fixed:false };
+function hasPhoto(no,a){
+  const o=auditMap.get(no)||{}; const pc=photoCache.get(no)||{};
+  if(a[F.g1]||a[F.g2]) return true;
+  return MAIN_KINDS.concat(EXTRA_KINDS).some(k=>(o.photos&&o.photos[k])||(pc[k]&&(pc[k].url||pc[k].thumb)));
+}
+function ppmStatus(no){ const p=PPM[no]; if(!p) return ''; return p.s?'scheduled':'unscheduled'; }
+function filtersActive(){
+  return !!(filters2.status.size||filters2.dept.size||filters2.workgroup.size||
+    filters2.photo||filters2.mine||filters2.auditor||filters2.ppm||filters2.fixed);
+}
+function matchFilters(a){
+  const no=a[F.asset], o=auditMap.get(no);
+  if(filters2.status.size && !filters2.status.has(cardStatus(no))) return false;
+  if(filters2.dept.size && !filters2.dept.has(a[F.deptname])) return false;
+  if(filters2.workgroup.size && !filters2.workgroup.has(a[F.workgroup])) return false;
+  if(filters2.photo){ const h=hasPhoto(no,a);
+    if(filters2.photo==='ada'&&!h) return false; if(filters2.photo==='tiada'&&h) return false; }
+  if(filters2.fixed && !(o&&o.edits&&Object.keys(o.edits).length)) return false;
+  if(filters2.ppm && ppmStatus(no)!==filters2.ppm) return false;
+  const who=filters2.auditor||(filters2.mine?getUser():'');
+  if(who){ if(!o) return false; const u=String(o.user||o.checkedBy||'').trim(); if(u!==who) return false; }
+  return true;
+}
 function getResults(){
-  let res;
   const q=curQuery.trim().toUpperCase();
+  let res;
   if(q){
     res=ASSETS.filter(a=>{
       for(const k of SEARCH_KEYS){ const v=effVal(a,k); if(v&&String(v).toUpperCase().includes(q)) return true; }
       return false;
     });
+  } else if(filtersActive()){
+    res=ASSETS;                                       // ada penapis: cari merentas semua aset
   } else {
-    // tiada carian: papar aset yang telah diaudit (kerja pemeriksa)
-    res=ASSETS.filter(a=>auditMap.has(a[F.asset]));
+    res=ASSETS.filter(a=>auditMap.has(a[F.asset]));   // default: aset yang telah diaudit
   }
-  // tapis ikut chip
-  if(curFilter==='unsynced') res=res.filter(a=>{const o=auditMap.get(a[F.asset]);return o&&o.dataStatus!=='confirmed';});
-  else if(curFilter==='checked') res=res.filter(a=>{const o=auditMap.get(a[F.asset]);return o&&o.checked;});
-  else if(curFilter==='fixed') res=res.filter(a=>{const o=auditMap.get(a[F.asset]);return o&&o.edits&&Object.keys(o.edits).length;});
+  if(filtersActive()) res=res.filter(matchFilters);
   return res;
+}
+
+let DEPT_LIST=null, WG_LIST=null;
+function distinctVals(idx){ const s=new Set(); for(const a of ASSETS){ const v=a[idx]; if(v&&!isEmptyVal(v)) s.add(v); } return Array.from(s).sort(); }
+function tapisOptions(){
+  if(!DEPT_LIST) DEPT_LIST=distinctVals(F.deptname);
+  if(!WG_LIST) WG_LIST=distinctVals(F.workgroup);
+  const chk=(grp,val,label,on)=>`<label class="opt"><input type="checkbox" data-fg="${grp}" value="${esc(val)}" ${on?'checked':''}> ${esc(label)}</label>`;
+  const rad=(name,attr,val,label,on)=>`<label class="opt"><input type="radio" name="${name}" ${attr}="${esc(val)}" ${on?'checked':''}> ${esc(label)}</label>`;
+  const stat=[['done','🟢 Selesai + sync'],['pending','🟡 Menunggu sync'],['busy','🔵 Sedang audit'],['attn','🔴 Perlu perhatian'],['baharu','🟣 Aset Baharu'],['normal','⚪ Belum disentuh']];
+  let h='';
+  h+=`<div class="fgrp"><div class="fgrp-h">Status</div><div class="opts">${stat.map(s=>chk('status',s[0],s[1],filters2.status.has(s[0]))).join('')}</div></div>`;
+  h+=`<div class="fgrp"><div class="fgrp-h">Gambar</div><div class="opts">
+       ${rad('fphoto','data-fp','','Semua',filters2.photo==='')}
+       ${rad('fphoto','data-fp','ada','Ada gambar',filters2.photo==='ada')}
+       ${rad('fphoto','data-fp','tiada','Tiada gambar',filters2.photo==='tiada')}</div></div>`;
+  h+=`<div class="fgrp"><div class="fgrp-h">Workgroup / Disiplin</div><div class="opts">${WG_LIST.map(v=>chk('workgroup',v,v,filters2.workgroup.has(v))).join('')||'<div class="orig">Tiada</div>'}</div></div>`;
+  let who=`<label class="opt"><input type="checkbox" id="fMine" ${filters2.mine?'checked':''}> Hanya tindakan saya</label>`;
+  if(isAdministrator()){
+    const auditors=Array.from(new Set(Array.from(auditMap.values()).map(o=>String(o.user||o.checkedBy||'').trim()).filter(Boolean))).sort();
+    who+=`<label class="opt">Auditor:&nbsp;<select id="fAuditor"><option value="">— semua —</option>${auditors.map(n=>`<option value="${esc(n)}" ${filters2.auditor===n?'selected':''}>${esc(n)}</option>`).join('')}</select></label>`;
+  }
+  h+=`<div class="fgrp"><div class="fgrp-h">Auditor</div><div class="opts">${who}</div></div>`;
+  h+=`<div class="fgrp"><div class="fgrp-h">PPM</div><div class="opts">
+       ${rad('fppm','data-fm','','Semua',filters2.ppm==='')}
+       ${rad('fppm','data-fm','scheduled','Scheduled',filters2.ppm==='scheduled')}
+       ${rad('fppm','data-fm','unscheduled','Unscheduled',filters2.ppm==='unscheduled')}</div></div>`;
+  h+=`<div class="fgrp"><div class="fgrp-h">Pembetulan</div><div class="opts">
+       <label class="opt"><input type="checkbox" id="fFixed" ${filters2.fixed?'checked':''}> Hanya yang ada pembetulan</label></div></div>`;
+  h+=`<div class="fgrp"><div class="fgrp-h">Jabatan</div><div class="opts deptscroll">${DEPT_LIST.map(v=>chk('dept',v,v,filters2.dept.has(v))).join('')||'<div class="orig">Tiada</div>'}</div></div>`;
+  return h;
+}
+function openTapis(){ $('#tapisBody').innerHTML=tapisOptions(); showOverlay('tapisModal'); }
+function applyTapis(){
+  const b=$('#tapisBody');
+  filters2.status=new Set([...b.querySelectorAll('input[data-fg="status"]:checked')].map(i=>i.value));
+  filters2.workgroup=new Set([...b.querySelectorAll('input[data-fg="workgroup"]:checked')].map(i=>i.value));
+  filters2.dept=new Set([...b.querySelectorAll('input[data-fg="dept"]:checked')].map(i=>i.value));
+  const pr=b.querySelector('input[name="fphoto"]:checked'); filters2.photo=pr?pr.getAttribute('data-fp'):'';
+  const mr=b.querySelector('input[name="fppm"]:checked'); filters2.ppm=mr?mr.getAttribute('data-fm'):'';
+  filters2.mine=!!(b.querySelector('#fMine')&&b.querySelector('#fMine').checked);
+  filters2.fixed=!!(b.querySelector('#fFixed')&&b.querySelector('#fFixed').checked);
+  const au=b.querySelector('#fAuditor'); filters2.auditor=au?au.value:'';
+  closeOverlay('tapisModal'); renderCount=CONFIG.RENDER_LIMIT; render();
+}
+function resetTapis(){
+  filters2.status.clear(); filters2.dept.clear(); filters2.workgroup.clear();
+  filters2.photo=''; filters2.mine=false; filters2.auditor=''; filters2.ppm=''; filters2.fixed=false;
+  $('#tapisBody').innerHTML=tapisOptions();
+}
+function activeFilterChips(){
+  const c=[];
+  filters2.status.forEach(s=>c.push(['status:'+s,(STATUS_META[s]&&STATUS_META[s].label)||s]));
+  filters2.workgroup.forEach(v=>c.push(['workgroup:'+v,v]));
+  filters2.dept.forEach(v=>c.push(['dept:'+v,v]));
+  if(filters2.photo) c.push(['photo',filters2.photo==='ada'?'Ada gambar':'Tiada gambar']);
+  if(filters2.ppm) c.push(['ppm',filters2.ppm==='scheduled'?'PPM Scheduled':'PPM Unscheduled']);
+  if(filters2.mine) c.push(['mine','Tindakan saya']);
+  if(filters2.auditor) c.push(['auditor','Auditor: '+filters2.auditor]);
+  if(filters2.fixed) c.push(['fixed','Pembetulan']);
+  return c;
+}
+function renderActiveChips(){
+  const el=$('#activeChips'); if(!el) return;
+  const chips=activeFilterChips();
+  el.innerHTML=chips.map(c=>`<span class="achip" data-fx="${esc(c[0])}">${esc(c[1])} <b>✕</b></span>`).join('');
+  const nb=$('#tapisN'); if(nb){ nb.textContent=chips.length; nb.classList.toggle('hide',!chips.length); }
+}
+function removeFilterChip(key){
+  if(key==='photo') filters2.photo='';
+  else if(key==='ppm') filters2.ppm='';
+  else if(key==='mine') filters2.mine=false;
+  else if(key==='auditor') filters2.auditor='';
+  else if(key==='fixed') filters2.fixed=false;
+  else if(key.indexOf('status:')===0) filters2.status.delete(key.slice(7));
+  else if(key.indexOf('workgroup:')===0) filters2.workgroup.delete(key.slice(10));
+  else if(key.indexOf('dept:')===0) filters2.dept.delete(key.slice(5));
+  renderCount=CONFIG.RENDER_LIMIT; render();
 }
 
 function render(){
   const list=$('#list');
   const q=curQuery.trim();
   const res=getResults();
+  renderActiveChips();
+  const rc=$('#resultCount'); if(rc) rc.textContent=res.length+' aset';
 
   if(res.length===0){
     if(q){
@@ -1016,13 +1153,14 @@ function render(){
               :`<button class="regbtn" id="regSuggest" data-no="">➕ Daftar Aset Baharu</button>`):''}`;
       const rb=$('#regSuggest'); if(rb) rb.onclick=()=>openRegister(rb.dataset.no||q);
     }
-    else if(curFilter!=='all'){ list.innerHTML=`<div class="hint"><span class="big">📋</span>Tiada rekod untuk penapis ini.</div>`; }
+    else if(filtersActive()){ list.innerHTML=`<div class="hint"><span class="big">📋</span>Tiada aset sepadan dengan tapisan ini.</div>`; }
     else { list.innerHTML=`<div class="hint"><span class="big">🔎</span>Taip <b>No. Aset / UNIZA / Lokasi / Jenama / Serial…</b> untuk mula,<br>atau tekan ikon imbas untuk scan QR/Barcode.<br><br>Aset yang anda audit akan dipaparkan di sini.</div>`; }
     $('#fab').classList.remove('show');
     return;
   }
 
   const head = q? `<div class="section-label">${res.length} hasil carian</div>`
+                : filtersActive()? `<div class="section-label">Hasil tapisan (${res.length})</div>`
                 : `<div class="section-label">Aset Diaudit (${res.length})</div>`;
   const slice=res.slice(0,renderCount);
   let html=head + slice.map(cardHTML).join("");
@@ -1067,10 +1205,6 @@ function updateSummary(){
   $('#sp-sending').textContent='⏳ '+sending;
   $('#sp-ok').textContent='✅ '+ok;
   $('#sp-fail').textContent='⚠️ '+fail;
-  $('#c-all').textContent=auditMap.size?` ${auditMap.size}`:'';
-  $('#c-unsynced').textContent=unsynced?` ${unsynced}`:'';
-  $('#c-checked').textContent=checked?` ${checked}`:'';
-  $('#c-fixed').textContent=fixed?` ${fixed}`:'';
   if(dashOpen) renderDashboard();
 }
 
@@ -2139,12 +2273,11 @@ $('#search').addEventListener('input',e=>{
 });
 $('#clrBtn').onclick=()=>{ $('#search').value=''; curQuery=''; $('#clrBtn').style.display='none'; render(); $('#search').focus(); };
 
-/* filter chips */
-$('#filters').addEventListener('click',e=>{
-  const c=e.target.closest('.chip'); if(!c) return;
-  $$('.chip').forEach(x=>x.classList.remove('on')); c.classList.add('on');
-  curFilter=c.dataset.f; renderCount=CONFIG.RENDER_LIMIT; render();
-});
+/* Panel Tapis */
+$('#tapisBtn').onclick=openTapis;
+$('#tapisApply').onclick=applyTapis;
+$('#tapisReset').onclick=resetTapis;
+$('#activeChips').addEventListener('click',e=>{ const c=e.target.closest('.achip'); if(c) removeFilterChip(c.dataset.fx); });
 
 /* delegated list clicks */
 $('#list').addEventListener('click',e=>{
