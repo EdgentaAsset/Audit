@@ -22,6 +22,7 @@
 var SHEET_ID  = "";   // <-- ISI: ID Google Sheet
 var FOLDER_ID = "";   // <-- (pilihan) ID folder Drive untuk gambar
 var SHEET_NAME = "Audit";
+var TRASH_SHEET_NAME = "Rekod Dipadam";
 var FOLDER_NAME = "HoSZA Audit Foto";
 
 /* Susunan lajur output Sheet */
@@ -227,7 +228,12 @@ function handleDelete_(p) {
   var assetNo = String(p.asset || "").trim();
   var sheet = getSheet_();
   var rowIndex = findRow_(sheet, assetNo);
-  if (rowIndex > 0) { sheet.deleteRow(rowIndex); return { ok: true, asset: assetNo, deleted: true }; }
+  if (rowIndex > 0) {
+    var rowVals = sheet.getRange(rowIndex, 1, 1, HEADERS.length).getValues()[0];
+    getTrashSheet_().appendRow(rowVals.concat([p.user || "", new Date()]));
+    sheet.deleteRow(rowIndex);
+    return { ok: true, asset: assetNo, deleted: true };
+  }
   return { ok: true, asset: assetNo, deleted: false };
 }
 
@@ -251,6 +257,19 @@ function getNewSheet_() {
   if (sheet.getLastRow() === 0) {
     sheet.appendRow(NEW_HEADERS);
     sheet.getRange(1, 1, 1, NEW_HEADERS.length).setFontWeight("bold");
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function getTrashSheet_() {
+  var ss = SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(TRASH_SHEET_NAME);
+  if (!sheet) sheet = ss.insertSheet(TRASH_SHEET_NAME);
+  if (sheet.getLastRow() === 0) {
+    var h = HEADERS.concat(["Dipadam Oleh", "Masa Dipadam"]);
+    sheet.appendRow(h);
+    sheet.getRange(1, 1, 1, h.length).setFontWeight("bold");
     sheet.setFrozenRows(1);
   }
   return sheet;
