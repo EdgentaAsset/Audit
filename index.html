@@ -243,6 +243,22 @@ body{padding-bottom:calc(62px + env(safe-area-inset-bottom))}
 .deptscroll{max-height:190px;overflow:auto;border:1px solid var(--gray-200);border-radius:var(--r-md);padding:11px}
 .tapis-foot{display:flex;gap:10px;padding:12px var(--sp-4);border-top:1px solid var(--gray-200);position:sticky;bottom:0;background:var(--card)}
 .tapis-foot .btn-primary{flex:1}
+
+/* ===== Tab Aktiviti (#5) ===== */
+.act-top{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin-bottom:18px}
+.act-kpi{background:var(--card);border:1px solid var(--gray-200);border-radius:var(--r-md);padding:13px 8px;text-align:center}
+.act-kpi .n{font-size:23px;font-weight:800;line-height:1}
+.act-kpi .l{font-size:11px;color:var(--muted);font-weight:600;margin-top:4px}
+.act-kpi.attn .n{color:var(--red)} .act-kpi.busy .n{color:var(--sky)} .act-kpi.pending .n{color:var(--amber)}
+.act-sec{margin-bottom:16px}
+.act-h{display:flex;justify-content:space-between;align-items:center;font-size:11.5px;font-weight:800;
+  padding:4px 4px 8px;text-transform:uppercase;letter-spacing:.3px}
+.act-h.attn{color:var(--red)} .act-h.busy{color:var(--sky)} .act-h.pending{color:var(--amber)}
+.act-row{display:flex;justify-content:space-between;align-items:center;gap:10px;background:var(--card);
+  border:1px solid var(--gray-200);border-radius:var(--r-md);padding:11px 13px;margin-bottom:8px;cursor:pointer}
+.act-no{font-weight:800;color:var(--blue);font-size:14px}
+.act-sub{font-size:12px;color:var(--muted);margin-top:2px}
+.act-row-r{font-size:12px;font-weight:700;color:var(--ink-soft);white-space:nowrap}
 .detgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px 14px}
 .detgrid .field.full{grid-column:1/-1}
 
@@ -1205,6 +1221,8 @@ function updateSummary(){
   $('#sp-sending').textContent='⏳ '+sending;
   $('#sp-ok').textContent='✅ '+ok;
   $('#sp-fail').textContent='⚠️ '+fail;
+  updateNavDot();
+  if(curTab==='aktiviti') renderActivity();
   if(dashOpen) renderDashboard();
 }
 
@@ -1281,9 +1299,37 @@ function showTab(name){
 function toggleDash(force){ showTab(force===false?'senarai':'ringkasan'); }
 
 /* Tab Aktiviti & Akaun — versi ringkas (diperkemas dalam Fasa 5 & 6) */
+function activityRow(no){
+  const a=ASSET_BY_NO.get(no.toUpperCase())||[]; const o=auditMap.get(no)||{};
+  const sub=syncSubLabel(no)||(o.guidedActive?('Audit '+(o.guidedStep||1)+'/6'):'');
+  return `<div class="act-row" data-actopen="${esc(no)}">
+    <div><div class="act-no">${esc(no)}</div><div class="act-sub">${esc(a[F.locname]||a[F.deptname]||'-')}</div></div>
+    <div class="act-row-r">${esc(sub)}</div></div>`;
+}
 function renderActivity(){
   const el=$('#activityBody'); if(!el) return;
-  el.innerHTML='<div class="hint"><span class="big">⚡</span>Pusat Aktiviti — audit belum siap, ralat & status muat naik akan dipaparkan di sini.</div>';
+  const attn=[], busy=[], pending=[];
+  for(const [no] of auditMap){ const st=cardStatus(no);
+    if(st==='attn') attn.push(no); else if(st==='busy') busy.push(no); else if(st==='pending') pending.push(no); }
+  const sec=(title,icon,list,tone)=> list.length?`<div class="act-sec">
+      <div class="act-h ${tone}"><span>${icon} ${title}</span><b>${list.length}</b></div>
+      ${list.map(activityRow).join('')}</div>`:'';
+  let h=`<div class="act-top">
+      <div class="act-kpi attn"><div class="n">${attn.length}</div><div class="l">Perlu perhatian</div></div>
+      <div class="act-kpi busy"><div class="n">${busy.length}</div><div class="l">Sedang proses</div></div>
+      <div class="act-kpi pending"><div class="n">${pending.length}</div><div class="l">Menunggu sync</div></div>
+    </div>`;
+  h+=sec('Perlu perhatian','⚠️',attn,'attn');
+  h+=sec('Sedang proses','▶',busy,'busy');
+  h+=sec('Menunggu sync','⏳',pending,'pending');
+  if(!attn.length&&!busy.length&&!pending.length) h+='<div class="hint"><span class="big">✅</span>Semua kemas — tiada item perlu tindakan.</div>';
+  if(isWriter()) h+=`<button class="btn-primary" id="actSyncAll" style="margin-top:8px">⟳ Segerak semua</button>`;
+  el.innerHTML=h;
+  const sa=$('#actSyncAll'); if(sa) sa.onclick=()=>syncAll(true);
+}
+function updateNavDot(){
+  let attn=0; for(const [no] of auditMap){ if(cardStatus(no)==='attn'){ attn++; break; } }
+  const d=$('#navDot'); if(d) d.classList.toggle('hide',!attn);
 }
 function renderAccount(){
   const el=$('#accountBody'); if(!el) return;
@@ -2278,6 +2324,7 @@ $('#tapisBtn').onclick=openTapis;
 $('#tapisApply').onclick=applyTapis;
 $('#tapisReset').onclick=resetTapis;
 $('#activeChips').addEventListener('click',e=>{ const c=e.target.closest('.achip'); if(c) removeFilterChip(c.dataset.fx); });
+$('#activityBody').addEventListener('click',e=>{ const r=e.target.closest('[data-actopen]'); if(r){ showTab('senarai'); openFound(r.dataset.actopen); } });
 
 /* delegated list clicks */
 $('#list').addEventListener('click',e=>{
