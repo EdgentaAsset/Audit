@@ -1,0 +1,359 @@
+/****************************************************************
+ * App Audit Aset HoSZA — UEM Edgenta
+ * Backend Google Apps Script (Web App)
+ *
+ * Fungsi:
+ *   doPost  -> action: 'upsert' | 'photo' | 'delete'  (UPSERT ikut ASSET NO)
+ *   doGet   -> action: 'get' | 'all'   (JSONP, untuk Sync & sahkan-baca-balik)
+ *
+ * 1 ASSET NO = 1 baris audit (tiada duplicate). Guna LockService.
+ * Gambar -> folder Google Drive, link berlabel masuk Sheet.
+ *
+ * == PENYEDIAAN (baca PANDUAN.md langkah penuh) ==
+ *  1) Buka Google Sheet baharu -> salin ID dari URL -> isi SHEET_ID.
+ *  2) Buat folder Google Drive untuk gambar -> salin ID -> isi FOLDER_ID
+ *     (atau biar kosong, skrip akan cipta folder "HoSZA Audit Foto").
+ *  3) Deploy > New deployment > Web app:
+ *        Execute as: Me
+ *        Who has access: Anyone
+ *     Salin URL /exec -> tampal dalam app (⚙️ Tetapan > URL Pengurusan).
+ ****************************************************************/
+
+var SHEET_ID  = "";   // <-- ISI: ID Google Sheet
+var FOLDER_ID = "";   // <-- (pilihan) ID folder Drive untuk gambar
+var SHEET_NAME = "Audit";
+var FOLDER_NAME = "HoSZA Audit Foto";
+
+/* Susunan lajur output Sheet */
+var HEADERS = [
+  "Timestamp", "Masa Peranti", "ASSET NO", "NO. UNIZA",
+  "Telah Diperiksa", "Nama Pemeriksa", "Masa Diperiksa", "Kaedah Audit",
+  "Lokasi (edit)", "Jenama (edit)", "Model (edit)", "No. Serial (edit)",
+  "Pembetulan (JSON)", "Catatan",
+  "Semakan UNIZA", "Semakan Lokasi", "Semakan Jenis Aset", "Semakan Spesifikasi", "Semakan Gambar",
+  "Gambar No. Aset", "Gambar Nameplate", "Gambar Keseluruhan",
+  "Gambar Tambahan 1", "Gambar Tambahan 2", "Gambar Jenis Aset (Isu)",
+  "User", "Status Sync"
+];
+
+/* Indeks lajur gambar (0-based) ikut HEADERS di atas */
+var PHOTO_COL = { aset: 19, nameplate: 20, keseluruhan: 21, tambahan1: 22, tambahan2: 23, jenisisu: 24 };
+
+/* Nama lajur gambar (untuk cari lajur secara dinamik dalam mana-mana sheet) */
+var PHOTO_HEADER = {
+  aset: "Gambar No. Aset", nameplate: "Gambar Nameplate", keseluruhan: "Gambar Keseluruhan",
+  tambahan1: "Gambar Tambahan 1", tambahan2: "Gambar Tambahan 2",
+  jenisisu: "Gambar Jenis Aset (Isu)"
+};
+
+/* ===== Sheet ASET BAHARU (aset yang didaftar pengguna, tiada dalam master) ===== */
+var NEW_SHEET_NAME = "Aset Baharu";
+var NEW_HEADERS = [
+  "Timestamp", "Masa Peranti", "ASSET NO", "NO. UNIZA",
+  "Lokasi", "Jenama", "Model", "No. Serial", "Catatan",
+  "Telah Diperiksa", "Nama Pemeriksa",
+  "Gambar No. Aset", "Gambar Nameplate", "Gambar Keseluruhan",
+  "Gambar Tambahan 1", "Gambar Tambahan 2",
+  "User", "Status Sync"
+];
+
+/* ================= POST ================= */
+function doPost(e) {
+  var lock = LockService.getScriptLock();
+  try {
+    lock.waitLock(30000);
+  } catch (err) {
+    return json_({ ok: false, error: "lock-timeout" });
+  }
+  try {
+    var body = {};
+    if (e && e.postData && e.postData.contents) {
+      body = JSON.parse(e.postData.contents);
+    } else if (e && e.parameter && e.parameter.action) {
+      body = { action: e.parameter.action, payload: JSON.parse(e.parameter.payload || "{}") };
+    }
+    var action = body.action || "upsert";
+    var p = body.payload || {};
+
+    if (action === "photo")    return json_(handlePhoto_(p));
+    if (action === "delete")   return json_(handleDelete_(p));
+    if (action === "newasset") return json_(handleNewAsset_(p));
+    return json_(handleUpsert_(p));
+  } catch (err) {
+    return json_({ ok: false, error: String(err) });
+  } finally {
+    lock.releaseLock();
+  }
+}
+
+/* ================= GET (JSONP) ================= */
+function doGet(e) {
+  var cb = (e && e.parameter && e.parameter.callback) || "";
+  var action = (e && e.parameter && e.parameter.action) || "all";
+  var out;
+  try {
+    if (action === "get") {
+      var asset = e.parameter.asset || "";
+      var row = findRowObject_(asset);
+      out = { ok: true, found: !!row, asset: asset, row: row || null };
+    } else if (action === "getnew") {
+      var an = e.parameter.asset || "";
+      var rn = findRowObjectNew_(an);
+      out = { ok: true, found: !!rn, asset: an, row: rn || null };
+    } else if (action === "allnew") {
+      out = { ok: true, rows: getAllNew_() };
+    } else {
+      out = { ok: true, rows: getAllObjects_() };
+    }
+  } catch (err) {
+    out = { ok: false, error: String(err) };
+  }
+  return jsonp_(out, cb);
+}
+
+/* ================= Handlers ================= */
+function handleUpsert_(p) {
+  var sheet = getSheet_();
+  var assetNo = String(p.asset || "").trim();
+  if (!assetNo) return { ok: false, error: "no-asset" };
+
+  var edits = p.edits || {};
+  var sem = p.semakan || {};
+  var rowVals = [
+    new Date(),                          // Timestamp
+    p.deviceTime || "",                  // Masa Peranti
+    assetNo,                             // ASSET NO
+    p.uniza || "",                       // NO. UNIZA
+    p.checked ? "Ya" : "",               // Telah Diperiksa
+    p.checked ? (p.checkedBy || p.user || "") : "", // Nama Pemeriksa
+    p.checked ? (p.checkedAt || "") : "",// Masa Diperiksa
+    p.method || "",                      // Kaedah Audit
+    edits.locno || "", edits.brand || "", edits.model || "", edits.serial || "",
+    Object.keys(edits).length ? JSON.stringify(edits) : "", // Pembetulan JSON
+    p.note || "",                        // Catatan
+    sem.uniza || "", sem.lokasi || "", sem.jenis || "", sem.spec || "", sem.gambar || "", // Semakan x5
+    "", "", "", "", "", "",              // 6 lajur gambar — dipelihara di bawah
+    p.user || "",                        // User
+    "Disahkan"                           // Status Sync
+  ];
+
+  var rowIndex = findRow_(sheet, assetNo);
+  if (rowIndex > 0) {
+    // UPSERT: gambar dikendali HANYA oleh tindakan 'photo' — kekalkan nilai sedia ada.
+    var existing = sheet.getRange(rowIndex, 1, 1, HEADERS.length).getValues()[0];
+    for (var c = 19; c <= 24; c++) rowVals[c] = existing[c];
+    // Jika upsert ini tak bawa nilai semakan (cth tick/edit biasa), kekalkan yang sedia ada.
+    for (var s = 14; s <= 18; s++) { if (!rowVals[s] && existing[s]) rowVals[s] = existing[s]; }
+    if (!rowVals[7] && existing[7]) rowVals[7] = existing[7]; // Kaedah Audit
+    sheet.getRange(rowIndex, 1, 1, HEADERS.length).setValues([rowVals]);
+  } else {
+    sheet.appendRow(rowVals);
+    rowIndex = sheet.getLastRow();
+  }
+  return { ok: true, asset: assetNo, row: rowToObject_(rowVals) };
+}
+
+function handlePhoto_(p) {
+  var assetNo = String(p.asset || "").trim();
+  var kind = p.kind;
+  var colName = PHOTO_HEADER[kind];
+  if (!assetNo || !colName) return { ok: false, error: "bad-kind" };
+
+  var isNew = p.sheet === "baharu";
+  var sheet = isNew ? getNewSheet_() : getSheet_();
+  var headers = isNew ? NEW_HEADERS : HEADERS;
+  var col1 = headers.indexOf(colName) + 1;   // 1-based
+
+  var rowIndex = findRow_(sheet, assetNo);
+  if (rowIndex < 1) {
+    var blank = headers.map(function () { return ""; });
+    blank[0] = new Date(); blank[2] = assetNo;
+    blank[headers.length - 2] = p.user || ""; blank[headers.length - 1] = "Disahkan";
+    sheet.appendRow(blank);
+    rowIndex = sheet.getLastRow();
+  }
+
+  // Nameplate "Tiada" — tulis label supaya admin tahu ia memang tiada
+  if (p.tiada) {
+    sheet.getRange(rowIndex, col1).setValue("TIADA");
+    sheet.getRange(rowIndex, 1).setValue(new Date());
+    return { ok: true, asset: assetNo, kind: kind, tiada: true };
+  }
+  // Buang gambar
+  if (p.remove) {
+    sheet.getRange(rowIndex, col1).setValue("");
+    sheet.getRange(rowIndex, 1).setValue(new Date());
+    return { ok: true, asset: assetNo, kind: kind, removed: true };
+  }
+
+  if (!p.dataB64) return { ok: false, error: "no-data" };
+  var folder = getFolder_();
+  var bytes = Utilities.base64Decode(p.dataB64);
+  var blob = Utilities.newBlob(bytes, p.mimeType || "image/jpeg",
+            p.filename || (assetNo + "_" + kind + ".jpg"));
+  var file = folder.createFile(blob);
+  try { file.setSharing(DriveApp.Access.ANYONE_WITH_LINK, DriveApp.Permission.VIEW); } catch (e) {}
+  var url = file.getUrl();
+
+  sheet.getRange(rowIndex, col1).setValue(url);
+  sheet.getRange(rowIndex, 1).setValue(new Date());
+  return { ok: true, asset: assetNo, kind: kind, url: url };
+}
+
+/* ===== Aset Baharu (upsert ke tab "Aset Baharu") ===== */
+function handleNewAsset_(p) {
+  var assetNo = String(p.asset || "").trim();
+  if (!assetNo) return { ok: false, error: "no-asset" };
+  var sheet = getNewSheet_();
+  var rowVals = [
+    new Date(), p.deviceTime || "", assetNo, p.uniza || "",
+    p.location || "", p.brand || "", p.model || "", p.serial || "", p.note || "",
+    p.checked ? "Ya" : "", p.checkedBy || p.user || "",
+    "", "", "", "", "",                 // 5 lajur gambar — dikendali oleh 'photo'
+    p.user || "", "Disahkan"
+  ];
+  var rowIndex = findRow_(sheet, assetNo);
+  if (rowIndex > 0) {
+    var existing = sheet.getRange(rowIndex, 1, 1, NEW_HEADERS.length).getValues()[0];
+    for (var c = 11; c <= 15; c++) rowVals[c] = existing[c];  // pelihara lajur gambar
+    sheet.getRange(rowIndex, 1, 1, NEW_HEADERS.length).setValues([rowVals]);
+  } else {
+    sheet.appendRow(rowVals);
+  }
+  return { ok: true, asset: assetNo };
+}
+
+function handleDelete_(p) {
+  var assetNo = String(p.asset || "").trim();
+  var sheet = getSheet_();
+  var rowIndex = findRow_(sheet, assetNo);
+  if (rowIndex > 0) { sheet.deleteRow(rowIndex); return { ok: true, asset: assetNo, deleted: true }; }
+  return { ok: true, asset: assetNo, deleted: false };
+}
+
+/* ================= Helpers ================= */
+function getSheet_() {
+  var ss = SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(SHEET_NAME);
+  if (!sheet) sheet = ss.insertSheet(SHEET_NAME);
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(HEADERS);
+    sheet.getRange(1, 1, 1, HEADERS.length).setFontWeight("bold");
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function getNewSheet_() {
+  var ss = SHEET_ID ? SpreadsheetApp.openById(SHEET_ID) : SpreadsheetApp.getActiveSpreadsheet();
+  var sheet = ss.getSheetByName(NEW_SHEET_NAME);
+  if (!sheet) sheet = ss.insertSheet(NEW_SHEET_NAME);
+  if (sheet.getLastRow() === 0) {
+    sheet.appendRow(NEW_HEADERS);
+    sheet.getRange(1, 1, 1, NEW_HEADERS.length).setFontWeight("bold");
+    sheet.setFrozenRows(1);
+  }
+  return sheet;
+}
+
+function getFolder_() {
+  if (FOLDER_ID) {
+    try { return DriveApp.getFolderById(FOLDER_ID); } catch (e) {}
+  }
+  var it = DriveApp.getFoldersByName(FOLDER_NAME);
+  return it.hasNext() ? it.next() : DriveApp.createFolder(FOLDER_NAME);
+}
+
+function findRow_(sheet, assetNo) {
+  var last = sheet.getLastRow();
+  if (last < 2) return -1;
+  var col = sheet.getRange(2, 3, last - 1, 1).getValues(); // lajur C = ASSET NO
+  var target = assetNo.toUpperCase();
+  for (var i = 0; i < col.length; i++) {
+    if (String(col[i][0]).trim().toUpperCase() === target) return i + 2;
+  }
+  return -1;
+}
+
+function rowToObject_(vals) {
+  var o = {};
+  for (var i = 0; i < HEADERS.length; i++) o[HEADERS[i]] = vals[i];
+  // alias mesra-klien
+  o.asset = vals[2]; o.uniza = vals[3];
+  o.checked = vals[4] === "Ya";
+  o.method = vals[7];
+  o.semakan = {
+    uniza: vals[14], lokasi: vals[15], jenis: vals[16], spec: vals[17], gambar: vals[18]
+  };
+  o.photos = {
+    aset: vals[19], nameplate: vals[20], keseluruhan: vals[21],
+    tambahan1: vals[22], tambahan2: vals[23], jenisisu: vals[24]
+  };
+  o.user = vals[25];
+  return o;
+}
+
+function findRowObject_(assetNo) {
+  var sheet = getSheet_();
+  var r = findRow_(sheet, assetNo);
+  if (r < 1) return null;
+  var vals = sheet.getRange(r, 1, 1, HEADERS.length).getValues()[0];
+  return rowToObject_(vals);
+}
+
+function getAllObjects_() {
+  var sheet = getSheet_();
+  var last = sheet.getLastRow();
+  if (last < 2) return [];
+  var vals = sheet.getRange(2, 1, last - 1, HEADERS.length).getValues();
+  return vals.map(rowToObject_);
+}
+
+/* ===== Aset Baharu: objek baris ===== */
+function rowToObjectNew_(vals) {
+  var o = {};
+  for (var i = 0; i < NEW_HEADERS.length; i++) o[NEW_HEADERS[i]] = vals[i];
+  o.asset = vals[2]; o.uniza = vals[3];
+  o.checked = vals[9] === "Ya";
+  o.photos = {
+    aset: vals[11], nameplate: vals[12], keseluruhan: vals[13],
+    tambahan1: vals[14], tambahan2: vals[15]
+  };
+  o.user = vals[16];
+  return o;
+}
+function findRowObjectNew_(assetNo) {
+  var sheet = getNewSheet_();
+  var r = findRow_(sheet, assetNo);
+  if (r < 1) return null;
+  var vals = sheet.getRange(r, 1, 1, NEW_HEADERS.length).getValues()[0];
+  return rowToObjectNew_(vals);
+}
+function getAllNew_() {
+  var sheet = getNewSheet_();
+  var last = sheet.getLastRow();
+  if (last < 2) return [];
+  var vals = sheet.getRange(2, 1, last - 1, NEW_HEADERS.length).getValues();
+  return vals.map(rowToObjectNew_);
+}
+
+/* ================= Output ================= */
+function json_(obj) {
+  return ContentService.createTextOutput(JSON.stringify(obj))
+    .setMimeType(ContentService.MimeType.JSON);
+}
+function jsonp_(obj, cb) {
+  if (cb) {
+    return ContentService.createTextOutput(cb + "(" + JSON.stringify(obj) + ")")
+      .setMimeType(ContentService.MimeType.JAVASCRIPT);
+  }
+  return json_(obj);
+}
+
+/* Uji pantas dari editor (Run > testSetup) */
+function testSetup() {
+  var s = getSheet_();
+  var n = getNewSheet_();
+  var f = getFolder_();
+  Logger.log("Sheet OK: " + s.getName() + " | Aset Baharu OK: " + n.getName() + " | Folder OK: " + f.getName());
+}
