@@ -221,6 +221,12 @@ body{padding-bottom:calc(62px + env(safe-area-inset-bottom))}
 .acct-name{font-size:18px;font-weight:800}
 .acct-role{font-size:12px;opacity:.88;text-transform:capitalize;margin-top:3px}
 .acct-btn{width:100%;justify-content:flex-start;text-align:left;margin-bottom:10px}
+.acct-grp{margin-bottom:14px}
+.acct-danger{color:var(--red)}
+.h-userchip{display:inline-flex;align-items:center;gap:6px;max-width:140px;height:34px;padding:0 13px;cursor:pointer;
+  background:rgba(255,255,255,.16);color:#fff;border-radius:var(--r-full);font-size:13px;font-weight:700;border:0}
+.h-userchip .hu-ic{font-size:14px;flex:0 0 auto}
+.h-userchip #hUserName{overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
 
 /* ===== Panel Tapis (#1 Filter) ===== */
 .filterbar{display:flex;align-items:center;gap:8px;flex-wrap:wrap;padding:10px var(--sp-4) 2px}
@@ -535,8 +541,7 @@ body{padding-bottom:calc(62px + env(safe-area-inset-bottom))}
       <b>Audit Aset HoSZA</b>
       <span>Hospital Sultan Zainal Abidin · UEM Edgenta</span>
     </div>
-    <button class="h-iconbtn" id="btnUser" title="Pemeriksa">👤</button>
-    <button class="h-iconbtn" id="btnSettings" title="Tetapan">⚙️</button>
+    <button class="h-userchip" id="hUser" title="Akaun"><span class="hu-ic">👤</span><span id="hUserName">Akaun</span></button>
   </div>
 
   <div class="searchbar">
@@ -1286,7 +1291,7 @@ function renderDashboard(){
 }
 let curTab='senarai';
 function showTab(name){
-  curTab=name; dashOpen=(name==='ringkasan');
+  curTab=name; dashOpen=(name==='ringkasan'); updateUserChip();
   document.body.classList.remove('tab-senarai','tab-ringkasan','tab-aktiviti','tab-akaun');
   document.body.classList.add('tab-'+name);
   $$('.navbtn').forEach(b=>b.classList.toggle('on',b.dataset.tab===name));
@@ -1333,15 +1338,21 @@ function updateNavDot(){
 }
 function renderAccount(){
   const el=$('#accountBody'); if(!el) return;
+  updateUserChip();
   const s=getSession()||{};
+  const roleTxt={enduser:'Pengguna (baca-sahaja)',admin:'Admin',administrator:'Administrator'}[s.role]||(s.role||'Pengguna');
   el.innerHTML=`<div class="acct-card">
       <div class="acct-name">${esc(s.name||s.username||'Pengguna')}</div>
-      <div class="acct-role">${esc(s.role||'enduser')}${s.status&&s.status!=='active'?' · '+esc(s.status):''}</div>
+      <div class="acct-role">${esc(roleTxt)}${s.status&&s.status!=='active'?' · '+esc(s.status):''}</div>
     </div>
-    <button class="btn-ghost acct-btn" id="acSettings">⚙️ Tetapan</button>
-    ${isAdministrator()?'<button class="btn-ghost acct-btn" id="acUsers">👥 Pengurusan Pengguna</button>':''}
-    ${isWriter()?'<button class="btn-ghost acct-btn" id="acReg">➕ Daftar Aset Baharu</button>':''}
-    <button class="btn-ghost acct-btn" id="acLogout">🚪 Log Keluar</button>`;
+    <div class="acct-grp">
+      <button class="btn-ghost acct-btn" id="acName">🪪 Tukar Nama Paparan</button>
+      <button class="btn-ghost acct-btn" id="acSettings">⚙️ Tetapan</button>
+      ${isAdministrator()?'<button class="btn-ghost acct-btn" id="acUsers">👥 Pengurusan Pengguna</button>':''}
+      ${isWriter()?'<button class="btn-ghost acct-btn" id="acReg">➕ Daftar Aset Baharu</button>':''}
+    </div>
+    <button class="btn-ghost acct-btn acct-danger" id="acLogout">🚪 Log Keluar</button>`;
+  $('#acName').onclick=openName;
   $('#acSettings').onclick=openSettings;
   const u=$('#acUsers'); if(u) u.onclick=openUsers;
   const rg=$('#acReg'); if(rg) rg.onclick=()=>openRegister('');
@@ -2486,7 +2497,8 @@ async function doLogout(){
 }
 
 function openName(){ getSession()?openAuth('account'):openAuth('home'); }  // serasi-belakang
-$('#btnUser').onclick=openName;
+$('#hUser').onclick=()=>showTab('akaun');
+function updateUserChip(){ const s=getSession()||{}; const el=$('#hUserName'); if(el) el.textContent=s.name||s.username||'Akaun'; }
 
 /* ===== Pengurusan Pengguna (Administrator) — Fasa 2 ===== */
 let _usersCache=[];
@@ -2561,10 +2573,10 @@ $('#usersBody').addEventListener('click',async e=>{
   }catch(e){ toast('⚠️ Gagal hubungi server','err'); b.disabled=false; }
 });
 
+function openSettingsTab(){ showTab('akaun'); }
 function openSettings(){
   $('#setEndpoint').value=getEndpoint(); showOverlay('settingsModal');
 }
-$('#btnSettings').onclick=openSettings;
 $('#setSave').onclick=()=>{
   const ep=$('#setEndpoint').value.trim();
   localStorage.setItem('endpoint',ep);
