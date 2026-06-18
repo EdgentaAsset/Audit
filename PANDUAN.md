@@ -81,6 +81,23 @@ Jenama · Model · No. Serial · Catatan · Telah Diperiksa · Nama Pemeriksa ·
 Gambar Keseluruhan · Gambar Tambahan 1 · Gambar Tambahan 2 · User · Status Sync`.
 Nameplate "TIADA" bermaksud aset itu memang tiada nameplate (disahkan pemeriksa).
 
+### Tab "Users" (akaun & peranan)
+Sistem akaun: **End User** (masuk tanpa akaun, baca-sahaja) · **Admin** (daftar sendiri → *menunggu
+kelulusan* → Administrator lulus → boleh tick) · **Administrator** (di-seed manual, ada panel pengurusan).
+Lajur: `Username · Nama · Role · Status · Salt · Hash · Token · Dicipta · Kemaskini`.
+
+- Password disemak **di Apps Script** (hash SHA-256 + salt unik) — tak pernah dalam HTML.
+- **Penguatkuasaan tulis di server:** setiap tick/edit/gambar/daftar perlu **token admin aktif**; server
+  cap nama dari baris Users (elak spoof) → papan "Sumbangan Admin" sah.
+- **Seed Administrator pertama:** dalam editor Apps Script, ubah `SEED_USER/SEED_PASS/SEED_NAME`
+  dalam fungsi `seedAdmin()`, **Run → `seedAdmin`** sekali. Tukar password selepas log masuk.
+- **Pengurusan:** panel dalam app (Administrator) *atau* edit terus sel `Status`/`Role`/`Token` dalam tab Users
+  (cth taip `active` untuk lulus; kosongkan `Token` = paksa logout).
+
+> Token sesi disimpan dalam peranti sampai Logout. Log masuk pertama perlu internet; lepas itu boleh guna
+> offline (tindakan beratur, disahkan masa sync). Jika Administrator batalkan token → peranti auto-logout
+> pada sync berikutnya.
+
 ---
 
 ## 3) Host di HTTPS (wajib untuk kamera & PWA)

@@ -474,19 +474,9 @@ main{padding:8px 12px 120px}
 </div>
 
 <!-- ===== Modals ===== -->
-<div class="overlay c" id="nameModal">
+<div class="overlay c" id="authModal">
   <div class="sheet center">
-    <div class="sheet-b" style="text-align:center;padding-top:26px">
-      <div style="font-size:42px">👋</div>
-      <b style="display:block;font-size:18px;margin:8px 0 4px">Selamat Datang</b>
-      <div style="color:var(--muted);font-size:13.5px;margin-bottom:18px">
-        Sila masukkan nama anda. Nama ini akan dilampirkan pada setiap rekod audit yang dihantar.</div>
-      <div class="formrow" style="text-align:left">
-        <label>Nama Pemeriksa</label>
-        <input id="nameInput" type="text" placeholder="cth: Ahmad bin Ali" autocomplete="name">
-      </div>
-      <button class="btn-primary" id="nameSave">Mula Mengaudit</button>
-    </div>
+    <div class="sheet-b" id="authBody" style="padding-top:24px"></div>
   </div>
 </div>
 
@@ -535,10 +525,6 @@ main{padding:8px 12px 120px}
   <div class="sheet">
     <div class="sheet-h"><b>⚙️ Tetapan</b><button class="x" data-close>✕</button></div>
     <div class="sheet-b">
-      <div class="formrow">
-        <label>Nama Pemeriksa</label>
-        <input id="setName" type="text" placeholder="Nama anda">
-      </div>
       <div class="formrow">
         <label>URL Pengurusan (Apps Script /exec)</label>
         <input id="setEndpoint" type="url" placeholder="https://script.google.com/macros/s/…/exec">
@@ -637,7 +623,16 @@ function normalizeAssetNo(q){
 }
 
 function getEndpoint(){ return (localStorage.getItem('endpoint')||CONFIG.ENDPOINT||"").trim(); }
-function getUser(){ return localStorage.getItem('auditor_name')||""; }
+
+/* ---- Sesi & peranan ---- */
+function getSession(){ try{ return JSON.parse(localStorage.getItem('session')||'null'); }catch(e){ return null; } }
+function setSession(s){ localStorage.setItem('session',JSON.stringify(s)); }
+function clearSession(){ localStorage.removeItem('session'); }
+function getUser(){ const s=getSession(); return (s&&s.name)||""; }
+function getToken(){ const s=getSession(); return (s&&s.token)||""; }
+/* Penulis = admin/administrator yang aktif & ada token. End User / pending = baca-sahaja. */
+function isWriter(){ const s=getSession(); return !!(s&&s.token&&s.status==='active'&&(s.role==='admin'||s.role==='administrator')); }
+function isAdministrator(){ const s=getSession(); return !!(s&&s.token&&s.status==='active'&&s.role==='administrator'); }
 
 /* ============================================================
    IndexedDB (idb ringkas)
@@ -791,13 +786,13 @@ function detailsHTML(a){
       <span class="dot" style="background:var(--green)"></span> Telah Diperiksa oleh ${esc(o.checkedBy||'-')} · ${esc(fmtTime(o.checkedAt))}</div>`:''}
     ${o&&o.note?`<div class="field" style="margin-top:11px"><div class="lbl">Catatan</div><div class="val">${esc(o.note)}</div></div>`:''}
 
-    <button class="btn btn-guided" data-guided="${esc(no)}" style="width:100%;margin-top:14px">
+    ${isWriter()?`<button class="btn btn-guided" data-guided="${esc(no)}" style="width:100%;margin-top:14px">
       ▶ ${o&&o.guidedActive&&!checked?`Sambung Audit Berpandu (${o.guidedStep||1}/6)`:'Mula Audit Berpandu'}</button>
     <div class="acts">
       <button class="btn btn-tick ${checked?'done':''}" data-tick="${esc(no)}">
         ${checked?'✓ Diperiksa':'👍 Tick Laju'}</button>
       <button class="btn btn-edit" data-edit="${esc(no)}">✏️ Edit</button>
-    </div>
+    </div>`:''}
 
     ${photosSectionHTML(no,a)}`;
 }
@@ -817,7 +812,7 @@ function photosSectionHTML(no,a){
   return `<div class="sec">
       <div class="sec-h"><span class="ic">📷</span> Gambar</div>
       ${chips.length?`<div class="pchips">${chips.join('')}</div>`:'<div class="wz-none">Belum ada gambar audit dimuat naik.</div>'}
-      <button class="btn-photo" data-photomgr="${esc(no)}">📸 Upload / Urus Gambar</button>
+      ${isWriter()?`<button class="btn-photo" data-photomgr="${esc(no)}">📸 Upload / Urus Gambar</button>`:''}
     </div>`;
 }
 function viewChip(label,url){ return `<span class="pchip" data-view="${esc(url)}">🖼️ ${esc(label)}</span>`; }
@@ -854,8 +849,8 @@ function render(){
     if(q){
       const sugg=normalizeAssetNo(q);
       list.innerHTML=`<div class="hint"><span class="big">🔍</span>Tiada aset sepadan dengan "<b>${esc(q)}</b>".</div>
-        ${sugg?`<button class="regbtn" id="regSuggest" data-no="${esc(sugg)}">➕ Daftar Aset Baharu: <b>${esc(sugg)}</b></button>`
-              :`<button class="regbtn" id="regSuggest" data-no="">➕ Daftar Aset Baharu</button>`}`;
+        ${isWriter()?(sugg?`<button class="regbtn" id="regSuggest" data-no="${esc(sugg)}">➕ Daftar Aset Baharu: <b>${esc(sugg)}</b></button>`
+              :`<button class="regbtn" id="regSuggest" data-no="">➕ Daftar Aset Baharu</button>`):''}`;
       const rb=$('#regSuggest'); if(rb) rb.onclick=()=>openRegister(rb.dataset.no||q);
     }
     else if(curFilter!=='all'){ list.innerHTML=`<div class="hint"><span class="big">📋</span>Tiada rekod untuk penapis ini.</div>`; }
@@ -886,7 +881,7 @@ function cssEsc(s){ return (window.CSS&&CSS.escape)?CSS.escape(s):s.replace(/"/g
 /* ----- FAB ----- */
 function updateFab(){
   const fab=$('#fab');
-  if(expandedAsset){
+  if(expandedAsset && isWriter()){
     const o=auditMap.get(expandedAsset), done=o&&o.checked;
     const inprog=o&&o.guidedActive&&!done;
     fab.classList.add('show');
@@ -993,7 +988,7 @@ async function persistAudit(no,o){
 }
 
 async function doTick(no){
-  if(!getUser()){ openName(); return; }
+  if(!isWriter()){ toast('🔒 Hanya Admin diluluskan boleh buat tindakan ini','err'); return; }
   if(isNewAsset(no)){ toast('ℹ️ Aset baharu sudah ditanda Diperiksa'); return; }
   let o=await getOrInitAudit(no);
   o.checked=true; o.checkedBy=getUser(); o.checkedAt=nowISO();
@@ -1004,7 +999,7 @@ async function doTick(no){
 }
 
 function openEdit(no){
-  if(!getUser()){ openName(); return; }
+  if(!isWriter()){ toast('🔒 Hanya Admin diluluskan boleh buat tindakan ini','err'); return; }
   if(isNewAsset(no)){ openRegister(no); return; }   // aset baharu -> borang daftar
   const a=ASSET_BY_NO.get(no.toUpperCase()); if(!a) return;
   // Medan: No. UNIZA (+imbas), Lokasi, Jenama, Model, No. Serial (+imbas)
@@ -1086,7 +1081,7 @@ async function delAudit(no){
 function scanIconSVG(){ return '<svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 7V5a2 2 0 0 1 2-2h2M17 3h2a2 2 0 0 1 2 2v2M21 17v2a2 2 0 0 1-2 2h-2M7 21H5a2 2 0 0 1-2-2v-2"/><path d="M3 12h18"/></svg>'; }
 
 function openRegister(prefill){
-  if(!getUser()){ openName(); return; }
+  if(!isWriter()){ toast('🔒 Hanya Admin diluluskan boleh buat tindakan ini','err'); return; }
   const no=normalizeAssetNo(prefill)||String(prefill||'').trim().toUpperCase();
   const ex=NEW_ASSETS.get(no)||{fields:{},photos:{},photoTiada:{}};
   let h=`<div style="font-size:12.5px;color:var(--muted);margin-bottom:14px">Daftar aset yang <b>tiada dalam pangkalan data</b>. Format No. Aset: <b>SZA#####F</b>. Gambar No.Aset, Nameplate & Keseluruhan <b style="color:var(--red)">wajib</b>.</div>`;
@@ -1212,7 +1207,7 @@ function setEditField(no,key,val,a){
 }
 
 function openGuided(no){
-  if(!getUser()){ openName(); return; }
+  if(!isWriter()){ toast('🔒 Hanya Admin diluluskan boleh buat tindakan ini','err'); return; }
   if(isNewAsset(no)){ openRegister(no); return; }   // aset baharu → borang daftar
   const a=ASSET_BY_NO.get(no.toUpperCase()); if(!a) return;
   guidedAsset=no;
@@ -1438,7 +1433,7 @@ $('#guidedBody').addEventListener('click',async e=>{
    Wizard Gambar (3 slot utama + sehingga 2 tambahan)
    ============================================================ */
 function openPhotoWizard(no,required){
-  if(!getUser()){ openName(); return; }
+  if(!isWriter()){ toast('🔒 Hanya Admin diluluskan boleh buat tindakan ini','err'); return; }
   wizardAsset=no; wizardSkip=new Set(); wizardRequired=!!required;
   // dedah slot tambahan yang sudah ada gambar
   const o=auditMap.get(no)||{}, ph=photoCache.get(no)||{};
@@ -1529,7 +1524,7 @@ function slotHTML(no,kind){
 
 /* ---- Tangkap / proses / buang gambar ---- */
 function triggerPhoto(no,kind){
-  if(!getUser()){ openName(); return; }
+  if(!isWriter()){ toast('🔒 Hanya Admin diluluskan boleh buat tindakan ini','err'); return; }
   pendingPhotoTarget={asset:no,kind};
   const fi=$('#fileInput'); fi.value=''; fi.click();
 }
@@ -1648,8 +1643,19 @@ function apiPost(action,payload){
     };
     xhr.onerror=()=>res({ok:false,_neterr:true}); // jangan reject — biar read-back yang sahkan
     xhr.ontimeout=()=>res({ok:false,_timeout:true});
-    xhr.send(JSON.stringify({action,payload,key:payload.asset||''}));
+    // Sertakan token sesi pada setiap tindakan tulis (server sahkan & cap identiti).
+    xhr.send(JSON.stringify({action,payload:Object.assign({},payload,{token:getToken()}),key:payload.asset||''}));
   });
+}
+
+/* Auth/pengurusan — POST baca-JSON (rahsia dalam body, bukan URL).
+   Guna fetch supaya respons /exec (redirect googleusercontent) boleh dibaca. */
+async function apiAuth(action,payload){
+  const ep=getEndpoint();
+  if(!ep) throw new Error('endpoint-not-set');
+  const body=JSON.stringify({action,payload:Object.assign({token:getToken()},payload||{})});
+  const r=await fetch(ep,{method:'POST',headers:{'Content-Type':'text/plain;charset=utf-8'},body,redirect:'follow'});
+  return await r.json();
 }
 
 /* JSONP doGet utk read-back / muat rekod */
@@ -1698,6 +1704,8 @@ async function pushAudit(no){
   o.dataStatus='sending'; await dbPut('audits',o); rerenderCard(no); updateSummary();
   let postErr=null;
   const r=await apiPost('upsert',buildUpsertPayload(o));
+  if(r&&r.error==='auth'){ o=auditMap.get(no)||o; o.dataStatus='failed'; o.lastError='auth';
+    await dbPut('audits',o); auditMap.set(no,o); rerenderCard(no); updateSummary(); syncing.delete(no); onAuthLost(); return; }
   if(r&&r.ok===false) postErr=r._timeout?'timeout':r._neterr?'rangkaian':'ralat';
   // sahkan via read-back (authoritative)
   const row=await verifyAsset(no);
@@ -1725,6 +1733,9 @@ async function pushPhoto(id){
       mimeType:'image/jpeg', dataB64:b64, user:rec.user||getUser(),
       sheet: isNew?'baharu':'audit'
     });
+    if(r&&r.error==='auth'){ rec.status='failed'; await dbPut('photos',rec);
+      setPhotoCache(rec.asset,rec.kind,{status:'failed',thumb:rec.thumb});
+      if(wizardAsset===rec.asset) renderWizard(rec.asset); rerenderCard(rec.asset); onAuthLost(); return; }
     let url = (r&&r.url)||'';
     if(!url){ // cuba dapatkan via read-back
       const row=isNew?await verifyNew(rec.asset):await verifyAsset(rec.asset);
@@ -1757,6 +1768,18 @@ async function pushPhoto(id){
 /* ----- Auto-sync (PUSH tempatan + PULL rekod pusat semua pengguna) ----- */
 async function syncAll(manual){
   if(!getEndpoint()){ if(manual){toast('⚠️ Tetapkan URL Pengurusan dahulu','err'); openSettings();} return; }
+  // Segar status/role + kesan paksa-logout (token dibatalkan oleh Administrator).
+  const sess=getSession();
+  if(sess&&sess.token){
+    try{
+      const w=await apiAuth('whoami',{});
+      if(w&&w.ok){
+        if(w.role!==sess.role||w.status!==sess.status||w.name!==sess.name){
+          setSession(Object.assign({},sess,{role:w.role,status:w.status,name:w.name})); render(); updateFab();
+        }
+      } else if(w&&w.error==='auth'){ onAuthLost(); return; }
+    }catch(e){ /* offline — teruskan dengan sesi cache */ }
+  }
   let n=0;
   for(const [no,o] of auditMap){
     if(o.dataStatus==='local'||o.dataStatus==='failed'){ n++; isNewAsset(no)?pushNewAsset(no):pushAudit(no); }
@@ -1787,6 +1810,8 @@ async function pushNewAsset(no){
     model:f.model||'', serial:f.serial||'', note:f.note||'',
     checked:true, checkedBy:rec.user, user:rec.user, deviceTime:rec.deviceTime
   });
+  if(r&&r.error==='auth'){ rec.dataStatus='failed'; o=auditMap.get(no); if(o){o.dataStatus='failed'; auditMap.set(no,o);}
+    NEW_ASSETS.set(no,rec); await dbPut('newassets',rec); rerenderCard(no); updateSummary(); onAuthLost(); return; }
   const row=await verifyNew(no);
   let st = row ? 'confirmed' : (r&&r.ok===true&&!r._unreadable ? 'confirmed' : 'failed');
   rec.dataStatus=st; o=auditMap.get(no); if(o){o.dataStatus=st; auditMap.set(no,o);}
@@ -1979,22 +2004,109 @@ function openPPM(no){
   $('#ppmBody').innerHTML=h; showOverlay('ppmModal');
 }
 
-/* name / settings */
-function openName(){ $('#nameInput').value=getUser(); showOverlay('nameModal'); setTimeout(()=>$('#nameInput').focus(),200); }
-$('#nameSave').onclick=()=>{
-  const v=$('#nameInput').value.trim();
-  if(!v){ $('#nameInput').focus(); return; }
-  localStorage.setItem('auditor_name',v); closeOverlay('nameModal'); toast('👋 Selamat datang, '+v,'ok');
-};
+/* ===== Akaun / Auth UI ===== */
+let _authLostShown=false;
+function onAuthLost(){
+  if(!getSession()) return;
+  clearSession();
+  if(!_authLostShown){ _authLostShown=true; toast('⚠️ Sesi tamat — sila log masuk semula','err'); }
+  render(); updateFab(); openAuth('home');
+}
+function statusLabel(s){ return s==='pending'?'menunggu kelulusan':s==='disabled'?'dinyahaktif':s==='active'?'aktif':s; }
+
+function openAuth(view){ renderAuth(view||'home'); showOverlay('authModal'); }
+function renderAuth(view){
+  const b=$('#authBody'); const s=getSession();
+  if(view==='login'){
+    b.innerHTML=`<b style="display:block;font-size:18px;margin-bottom:14px">🔑 Log Masuk Admin</b>
+      <div class="formrow" style="text-align:left"><label>Username</label><input id="auUser" autocomplete="username"></div>
+      <div class="formrow" style="text-align:left"><label>Password</label><input id="auPass" type="password" autocomplete="current-password"></div>
+      <button class="btn-primary" id="auDoLogin">Masuk</button>
+      <button class="btn-ghost" id="auBack" style="margin-top:8px">← Kembali</button>`;
+    $('#auBack').onclick=()=>renderAuth('home');
+    $('#auDoLogin').onclick=doLogin;
+    setTimeout(()=>$('#auUser').focus(),150);
+  } else if(view==='register'){
+    b.innerHTML=`<b style="display:block;font-size:18px;margin-bottom:6px">📝 Daftar Admin</b>
+      <div style="color:var(--muted);font-size:13px;margin-bottom:14px">Akaun baharu perlu kelulusan Administrator sebelum boleh tick.</div>
+      <div class="formrow" style="text-align:left"><label>Nama Penuh</label><input id="auName" autocomplete="name"></div>
+      <div class="formrow" style="text-align:left"><label>Username</label><input id="auUser" autocomplete="username"></div>
+      <div class="formrow" style="text-align:left"><label>Password</label><input id="auPass" type="password" autocomplete="new-password"></div>
+      <button class="btn-primary" id="auDoReg">Daftar</button>
+      <button class="btn-ghost" id="auBack" style="margin-top:8px">← Kembali</button>`;
+    $('#auBack').onclick=()=>renderAuth('home');
+    $('#auDoReg').onclick=doRegister;
+    setTimeout(()=>$('#auName').focus(),150);
+  } else if(view==='account' && s){
+    const role=s.role==='administrator'?'Administrator':s.role==='admin'?'Admin':'Pengguna';
+    b.innerHTML=`<div style="font-size:40px">👤</div>
+      <b style="display:block;font-size:17px;margin:6px 0 2px">${esc(s.name||s.username||'Pengguna')}</b>
+      <div style="color:var(--muted);font-size:13px;margin-bottom:16px">${esc(role)}${s.status&&s.status!=='active'?' · '+esc(statusLabel(s.status)):''}</div>
+      ${isAdministrator()?`<button class="btn-ghost" id="auUsers" style="margin-bottom:8px">👥 Pengurusan Pengguna</button>`:''}
+      <button class="btn-primary" id="auLogout">Log Keluar</button>
+      <button class="btn-ghost" id="auClose" style="margin-top:8px">Tutup</button>`;
+    const uBtn=$('#auUsers'); if(uBtn) uBtn.onclick=()=>{ closeOverlay('authModal'); if(typeof openUsers==='function') openUsers(); else toast('Panel pengguna belum tersedia'); };
+    $('#auClose').onclick=()=>closeOverlay('authModal');
+    $('#auLogout').onclick=doLogout;
+  } else { // home
+    b.innerHTML=`<div style="font-size:42px">👋</div>
+      <b style="display:block;font-size:18px;margin:8px 0 4px">Audit Aset HoSZA</b>
+      <div style="color:var(--muted);font-size:13.5px;margin-bottom:18px">Pilih cara masuk.</div>
+      <button class="btn-primary" id="auEnter">👁️ Masuk sebagai Pengguna (baca-sahaja)</button>
+      <button class="btn-ghost" id="auLogin" style="margin-top:10px">🔑 Log Masuk Admin</button>
+      <button class="btn-ghost" id="auReg" style="margin-top:8px">📝 Daftar Admin</button>`;
+    $('#auEnter').onclick=()=>{ setSession({role:'enduser',status:'active',name:'',username:'',token:''}); closeOverlay('authModal'); render(); updateFab(); };
+    $('#auLogin').onclick=()=>renderAuth('login');
+    $('#auReg').onclick=()=>renderAuth('register');
+  }
+}
+
+async function doLogin(){
+  const username=$('#auUser').value.trim(), password=$('#auPass').value;
+  if(!username||!password){ toast('Isi username & password','err'); return; }
+  if(!getEndpoint()){ toast('⚠️ URL Pengurusan belum ditetapkan','err'); return; }
+  const btn=$('#auDoLogin'); btn.disabled=true; btn.textContent='Memproses…';
+  try{
+    const r=await apiAuth('login',{username,password});
+    if(r&&r.ok&&r.token){
+      _authLostShown=false;
+      setSession({username:r.username||username,name:r.name||username,role:r.role,status:r.status,token:r.token});
+      closeOverlay('authModal'); render(); updateFab();
+      toast(isWriter()?('✅ Selamat datang, '+(r.name||username)):'ℹ️ Akaun anda '+statusLabel(r.status)+' — baca-sahaja buat masa ini',isWriter()?'ok':'');
+      if(getEndpoint()) syncAll(false);
+    } else {
+      const m={'no-user':'Username tak wujud','salah':'Password salah','disabled':'Akaun dinyahaktif'}[r&&r.error]||'Log masuk gagal';
+      toast('⚠️ '+m,'err'); btn.disabled=false; btn.textContent='Masuk';
+    }
+  }catch(e){ toast('⚠️ Gagal hubungi server (perlu internet kali pertama)','err'); btn.disabled=false; btn.textContent='Masuk'; }
+}
+
+async function doRegister(){
+  const name=$('#auName').value.trim(), username=$('#auUser').value.trim(), password=$('#auPass').value;
+  if(!name||!username||!password){ toast('Lengkapkan semua medan','err'); return; }
+  if(!getEndpoint()){ toast('⚠️ URL Pengurusan belum ditetapkan','err'); return; }
+  const btn=$('#auDoReg'); btn.disabled=true; btn.textContent='Memproses…';
+  try{
+    const r=await apiAuth('register',{name,username,password});
+    if(r&&r.ok){ toast('✅ Pendaftaran berjaya — menunggu kelulusan Administrator','ok'); renderAuth('login'); }
+    else { const m=(r&&r.error==='username-wujud')?'Username sudah diguna':'Pendaftaran gagal'; toast('⚠️ '+m,'err'); btn.disabled=false; btn.textContent='Daftar'; }
+  }catch(e){ toast('⚠️ Gagal hubungi server','err'); btn.disabled=false; btn.textContent='Daftar'; }
+}
+
+async function doLogout(){
+  try{ await apiAuth('logout',{}); }catch(e){}
+  clearSession(); closeOverlay('authModal'); render(); updateFab(); openAuth('home');
+}
+
+function openName(){ getSession()?openAuth('account'):openAuth('home'); }  // serasi-belakang
 $('#btnUser').onclick=openName;
 
 function openSettings(){
-  $('#setName').value=getUser(); $('#setEndpoint').value=getEndpoint(); showOverlay('settingsModal');
+  $('#setEndpoint').value=getEndpoint(); showOverlay('settingsModal');
 }
 $('#btnSettings').onclick=openSettings;
 $('#setSave').onclick=()=>{
-  const nm=$('#setName').value.trim(), ep=$('#setEndpoint').value.trim();
-  if(nm) localStorage.setItem('auditor_name',nm);
+  const ep=$('#setEndpoint').value.trim();
   localStorage.setItem('endpoint',ep);
   closeOverlay('settingsModal'); updateEndpointWarn(); updateNet(); toast('⚙️ Tetapan disimpan','ok');
 };
@@ -2176,7 +2288,8 @@ $('#updBtn').onclick=()=>{ if(swReg&&swReg.waiting) swReg.waiting.postMessage('s
       toast('ℹ️ Buka melalui pelayan/HTTPS untuk simpan audit luar talian','');
   }
 
-  if(!getUser()) openName();
+  // Gerbang log masuk: tiada sesi → pilih cara masuk (Pengguna / Admin / Daftar).
+  if(!getSession()) openAuth('home');
   if(getEndpoint()) setTimeout(()=>syncAll(false),1500);
   setInterval(()=>{ if(navigator.onLine&&getEndpoint()) syncAll(false); },CONFIG.AUTOSYNC_MS);
   window.addEventListener('online',()=>{ if(getEndpoint()) syncAll(false); });
