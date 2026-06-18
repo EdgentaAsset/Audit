@@ -1852,13 +1852,24 @@ async function pullRemote(silent){
   catch(e){ if(!silent) toast('⚠️ Gagal tarik data pusat','err'); return; }
   if(!r||!r.ok||!Array.isArray(r.rows)) return;
   let changed=0;
+  const remoteSet=new Set();
   for(const row of r.rows){
     const o=rowToOverlay(row); if(!o.asset) continue;
+    remoteSet.add(o.asset);
     const local=auditMap.get(o.asset);
     // Jangan timpa kerja tempatan yang belum sync (local/sending/draft audit berpandu).
     if(local && (local.dataStatus==='local'||local.dataStatus==='sending'||local.dataStatus==='draft'||local.guidedActive)) continue;
     auditMap.set(o.asset,o); await dbPut('audits',o);
     for(const k of MAIN_KINDS.concat(EXTRA_KINDS)){ if(o.photos[k]) setPhotoCache(o.asset,k,{status:'confirmed',url:o.photos[k]}); }
+    changed++;
+  }
+  // Padam overlay yang telah dipadam di Sheet pusat (oleh mana-mana user / terus di Sheet).
+  for(const no of Array.from(auditMap.keys())){
+    if(isNewAsset(no)) continue;                       // aset baharu = tab lain
+    const o=auditMap.get(no);
+    if(!o || o.dataStatus!=='confirmed') continue;     // jangan sentuh kerja belum-sync
+    if(remoteSet.has(no)) continue;                    // masih wujud di pusat
+    auditMap.delete(no); await dbDel('audits',no); photoCache.delete(no);
     changed++;
   }
   if(changed){ updateSummary(); render(); }
