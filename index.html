@@ -265,6 +265,8 @@ body{padding-bottom:calc(62px + env(safe-area-inset-bottom))}
 .act-no{font-weight:800;color:var(--blue);font-size:14px}
 .act-sub{font-size:12px;color:var(--muted);margin-top:2px}
 .act-row-r{font-size:12px;font-weight:700;color:var(--ink-soft);white-space:nowrap}
+.dash-chart{height:230px;width:100%}
+.dash-chart.tall{height:300px}
 .detgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px 14px}
 .detgrid .field.full{grid-column:1/-1}
 
@@ -714,6 +716,7 @@ body{padding-bottom:calc(62px + env(safe-area-inset-bottom))}
 
 <input type="file" id="fileInput" accept="image/*" capture="environment" class="hide">
 
+<script src="echarts.min.js"></script>
 <script src="app-data.js"></script>
 <script>
 "use strict";
@@ -1238,57 +1241,74 @@ let dashOpen=false;
 let lastSyncAt=+(localStorage.getItem('lastSyncAt')||0);
 function kpiCard(label,n,tone){ return `<div class="kpi kpi-${tone}"><div class="kpi-n">${n}</div><div class="kpi-l">${esc(label)}</div></div>`; }
 function isEmptyVal(v){ return !v || /^(n\/a|na|not available|tiada|-|none)$/i.test(String(v).trim()); }
+let dashCharts={};
+const ST_HEX={done:'#1f7a3f',pending:'#8a5a00',busy:'#0369a1',attn:'#b42318',baharu:'#6b28d6',normal:'#9aa3b1'};
+const ST_LBL={done:'Selesai + sync',pending:'Menunggu sync',busy:'Sedang audit',attn:'Perlu perhatian',baharu:'Aset Baharu',normal:'Belum disentuh'};
 function renderDashboard(){
   const el=$('#dashboard'); if(!el) return;
-  let local=0,sending=0,ok=0,fail=0,fixed=0,noserial=0,nophoto=0;
-  const total=auditMap.size;
-  const contrib=new Map();   // nama (dicap-server) -> bilangan tick
+  const sc={done:0,pending:0,busy:0,attn:0,baharu:0,normal:0};
+  let baharu=0,nophoto=0;
+  const dept={};   // dept -> {done,total}
+  const contrib=new Map();
   for(const [no,o] of auditMap){
-    const s=o.dataStatus||'local';
-    if(s==='local'||s==='draft')local++; else if(s==='sending')sending++; else if(s==='confirmed')ok++; else if(s==='failed')fail++;
-    if(o.edits&&Object.keys(o.edits).length)fixed++;
-    if(o.checked){ const u=String(o.user||o.checkedBy||'').trim()||'(tanpa nama)'; contrib.set(u,(contrib.get(u)||0)+1); }
+    sc[cardStatus(no)]++;
+    if(o.isNew) baharu++;
     const a=ASSET_BY_NO.get(no.toUpperCase())||[];
-    if(isEmptyVal(effVal(a,'serial'))) noserial++;
-    const pc=photoCache.get(no)||{};
-    const hasPhoto=a[F.g1]||a[F.g2]||MAIN_KINDS.concat(EXTRA_KINDS).some(k=>(o.photos&&o.photos[k])||(pc[k]&&(pc[k].url||pc[k].thumb)));
-    if(!hasPhoto) nophoto++;
+    if(!hasPhoto(no,a)) nophoto++;
+    if(o.checked){ const u=String(o.user||o.checkedBy||'').trim()||'(tanpa nama)'; contrib.set(u,(contrib.get(u)||0)+1); }
+    const dn=a[F.deptname]||'(tiada)'; const d=dept[dn]||(dept[dn]={done:0,total:0});
+    d.total++; if(cardStatus(no)==='done') d.done++;
   }
   const board=[...contrib.entries()].sort((a,b)=>b[1]-a[1]);
   const boardMax=board.length?board[0][1]:0;
   const medal=i=>i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
   const boardHTML=board.length?board.map((e,i)=>`<div class="lbrow">
-      <span class="lbrank">${medal(i)}</span>
-      <span class="lbname">${esc(e[0])}</span>
+      <span class="lbrank">${medal(i)}</span><span class="lbname">${esc(e[0])}</span>
       <span class="lbbar"><span class="lbfill" style="width:${boardMax?Math.round(e[1]/boardMax*100):0}%"></span></span>
-      <span class="lbn">${e[1]}</span>
-    </div>`).join(''):'<div class="dash-last">Belum ada tick direkod.</div>';
-  const pct=total?Math.round(ok/total*100):0;
+      <span class="lbn">${e[1]}</span></div>`).join(''):'<div class="dash-last">Belum ada tick direkod.</div>';
   el.innerHTML=`
-    <div class="dash-h">📊 Ringkasan Audit <button class="dash-x" id="dashClose" aria-label="Tutup">✕</button></div>
-    <div class="dash-sub">Isu data · ${total} aset diaudit</div>
+    <div class="dash-h">📊 Ringkasan Audit</div>
     <div class="kpi-grid">
-      ${kpiCard('Pembetulan',fixed,'fix')}
-      ${kpiCard('Tiada Serial',noserial,'warn')}
-      ${kpiCard('Tiada Gambar',nophoto,'warn')}
-      ${kpiCard('Jumlah Diaudit',total,'blue')}
+      ${kpiCard('Jumlah Diaudit',auditMap.size,'blue')}
+      ${kpiCard('Selesai + Sync',sc.done,'green')}
+      ${kpiCard('Menunggu Sync',sc.pending,'warn')}
+      ${kpiCard('Perlu Perhatian',sc.attn,'red')}
+      ${kpiCard('Aset Baharu',baharu,'sky')}
+      ${kpiCard('Tiada Gambar',nophoto,'gray')}
     </div>
-    <div class="dash-sub">Status penyegerakan</div>
-    <div class="kpi-grid">
-      ${kpiCard('Belum Sync',local,'gray')}
-      ${kpiCard('Menghantar',sending,'sky')}
-      ${kpiCard('Disahkan',ok,'green')}
-      ${kpiCard('Gagal',fail,'red')}
-    </div>
-    <div class="dash-prog">
-      <div class="dash-prog-top"><span>Selesai disegerak</span><b>${pct}%</b></div>
-      <div class="dash-bar"><div class="dash-bar-fill" style="width:${pct}%"></div></div>
-      <div class="dash-last">⟳ Sync terakhir: ${lastSyncAt?esc(fmtTime(new Date(lastSyncAt).toISOString())):'belum pernah'}</div>
-    </div>
-    <div class="dash-sub">🏆 Sumbangan Admin (jumlah tick)</div>
+    <div class="dash-sub">Taburan status</div>
+    <div id="chartStatus" class="dash-chart"></div>
+    <div class="dash-sub">Kemajuan ikut Jabatan (10 teratas)</div>
+    <div id="chartDept" class="dash-chart tall"></div>
+    <div class="dash-sub">🏆 Sumbangan Auditor</div>
     <div class="lboard">${boardHTML}</div>`;
-  $('#dashClose').onclick=()=>toggleDash(false);
+  Object.values(dashCharts).forEach(c=>{try{c.dispose();}catch(e){}}); dashCharts={};
+  if(window.echarts){ drawStatusChart(sc); drawDeptChart(dept); }
+  else { const c=$('#chartStatus'); if(c) c.innerHTML='<div class="dash-last">Carta tidak dimuat.</div>'; }
 }
+function drawStatusChart(sc){
+  const el=$('#chartStatus'); if(!el) return;
+  const c=echarts.init(el); dashCharts.status=c;
+  const data=Object.keys(sc).filter(k=>sc[k]>0).map(k=>({value:sc[k],name:ST_LBL[k],itemStyle:{color:ST_HEX[k]}}));
+  c.setOption({tooltip:{trigger:'item'},
+    legend:{bottom:0,left:'center',textStyle:{fontSize:11},itemWidth:12,itemHeight:12},
+    series:[{type:'pie',radius:['45%','70%'],center:['50%','42%'],label:{show:false},
+      data:data.length?data:[{value:1,name:'Tiada data',itemStyle:{color:'#e2e6ec'}}]}]});
+}
+function drawDeptChart(dept){
+  const el=$('#chartDept'); if(!el) return;
+  const c=echarts.init(el); dashCharts.dept=c;
+  let arr=Object.entries(dept).map(([k,v])=>({dept:k,done:v.done,rest:v.total-v.done}));
+  arr.sort((a,b)=>(b.done+b.rest)-(a.done+a.rest)); arr=arr.slice(0,10).reverse();
+  c.setOption({tooltip:{trigger:'axis',axisPointer:{type:'shadow'}},
+    legend:{data:['Selesai','Belum'],bottom:0,textStyle:{fontSize:11}},
+    grid:{left:4,right:14,top:8,bottom:30,containLabel:true},
+    xAxis:{type:'value',minInterval:1},
+    yAxis:{type:'category',data:arr.map(a=>a.dept),axisLabel:{fontSize:10,width:90,overflow:'truncate'}},
+    series:[{name:'Selesai',type:'bar',stack:'t',data:arr.map(a=>a.done),itemStyle:{color:'#1f7a3f'}},
+      {name:'Belum',type:'bar',stack:'t',data:arr.map(a=>a.rest),itemStyle:{color:'#e2e6ec'}}]});
+}
+window.addEventListener('resize',()=>{Object.values(dashCharts).forEach(c=>{try{c.resize();}catch(e){}});});
 let curTab='senarai';
 function showTab(name){
   curTab=name; dashOpen=(name==='ringkasan'); updateUserChip();
