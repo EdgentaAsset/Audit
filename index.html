@@ -403,6 +403,19 @@ main{padding:8px 12px 120px}
 .dash-last{font-size:11px;color:var(--label);font-weight:600;margin-top:9px}
 .miniact.on{background:#fff;color:var(--blue)}
 
+/* ===== Pengurusan Pengguna ===== */
+.urow{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;
+  padding:11px 0;border-bottom:1px solid var(--line)}
+.urow .uinfo{display:flex;flex-direction:column;gap:2px;min-width:0}
+.urow .uinfo b{font-size:14px}
+.urow .utop{justify-self:end}
+.urow .uacts{grid-column:1/-1;display:flex;flex-wrap:wrap;gap:6px}
+.ubtn{font-size:12px;font-weight:700;padding:6px 11px;border-radius:8px;border:1px solid var(--line);
+  background:#fff;color:var(--ink);cursor:pointer}
+.ubtn.ok{border-color:var(--green);color:#15803d;background:var(--green-bg)}
+.ubtn.warn{border-color:var(--red);color:#b91c1c;background:var(--red-bg)}
+.ubtn:disabled{opacity:.5}
+
 /* ===== Responsif: telefon → tablet → desktop (kekal 1 lajur, dipusatkan) ===== */
 @media (min-width:900px){
   .h-top,.searchbar,.syncbar,.filters,main,.dash,.warnbar{max-width:900px;margin-inline:auto}
@@ -533,6 +546,17 @@ main{padding:8px 12px 120px}
       <button class="btn-primary" id="setSave">Simpan Tetapan</button>
       <button class="btn-ghost" id="setSyncAll">⟳ Segerak semua rekod belum sync</button>
       <div class="orig" id="setInfo" style="margin-top:14px;text-align:center"></div>
+    </div>
+  </div>
+</div>
+
+<!-- Pengurusan Pengguna (Administrator) -->
+<div class="overlay" id="usersModal">
+  <div class="sheet">
+    <div class="sheet-h"><b>👥 Pengurusan Pengguna</b><button class="x" data-close>✕</button></div>
+    <div class="sheet-b">
+      <button class="btn-ghost" id="usersRefresh" style="margin-bottom:10px">⟳ Muat Semula</button>
+      <div id="usersBody"></div>
     </div>
   </div>
 </div>
@@ -2100,6 +2124,79 @@ async function doLogout(){
 
 function openName(){ getSession()?openAuth('account'):openAuth('home'); }  // serasi-belakang
 $('#btnUser').onclick=openName;
+
+/* ===== Pengurusan Pengguna (Administrator) — Fasa 2 ===== */
+let _usersCache=[];
+async function openUsers(){
+  if(!isAdministrator()){ toast('🔒 Administrator sahaja','err'); return; }
+  showOverlay('usersModal');
+  $('#usersBody').innerHTML='<div class="orig" style="text-align:center;padding:18px">Memuatkan…</div>';
+  await loadUsers();
+}
+async function loadUsers(){
+  try{
+    const r=await apiAuth('listusers',{});
+    if(r&&r.error==='auth'){ onAuthLost(); closeOverlay('usersModal'); return; }
+    if(!r||!r.ok||!Array.isArray(r.users)){ $('#usersBody').innerHTML='<div class="orig" style="text-align:center;color:var(--red)">Gagal memuat senarai.</div>'; return; }
+    _usersCache=r.users; renderUsers();
+  }catch(e){ $('#usersBody').innerHTML='<div class="orig" style="text-align:center;color:var(--red)">Gagal hubungi server.</div>'; }
+}
+function uStatusChip(s){
+  const m={active:['#15803d','var(--green-bg)','aktif'],pending:['#b45309','#fef3c7','menunggu'],disabled:['#b91c1c','var(--red-bg)','nyahaktif']};
+  const v=m[s]||['#475569','#f1f5f9',s];
+  return `<span style="font-size:11px;font-weight:700;color:${v[0]};background:${v[1]};padding:2px 8px;border-radius:999px">${esc(v[2])}</span>`;
+}
+function renderUsers(){
+  const me=(getSession()||{}).username;
+  if(!_usersCache.length){ $('#usersBody').innerHTML='<div class="orig" style="text-align:center;padding:12px">Tiada pengguna.</div>'; return; }
+  // isih: pending dahulu, kemudian nama
+  const arr=_usersCache.slice().sort((a,b)=>(a.status==='pending'?0:1)-(b.status==='pending'?0:1)||String(a.name).localeCompare(b.name));
+  $('#usersBody').innerHTML=arr.map(u=>{
+    const isAdmin=u.role==='administrator';
+    const isSelf=String(u.username).toLowerCase()===String(me).toLowerCase();
+    let btns='';
+    if(isSelf||isAdmin){ btns=`<span class="orig" style="font-size:11px">${isSelf?'(anda)':'(administrator)'}</span>`; }
+    else {
+      if(u.status==='pending') btns+=`<button class="ubtn ok" data-uact="approve" data-u="${esc(u.username)}">✓ Lulus</button>`+
+                                     `<button class="ubtn warn" data-uact="reject" data-u="${esc(u.username)}">✕ Tolak</button>`;
+      if(u.status==='active')  btns+=`<button class="ubtn warn" data-uact="disable" data-u="${esc(u.username)}">Nyahaktif</button>`;
+      if(u.status==='disabled')btns+=`<button class="ubtn ok" data-uact="enable" data-u="${esc(u.username)}">Aktif semula</button>`;
+      if(u.status!=='disabled'){
+        btns+=`<button class="ubtn" data-uact="resetpw" data-u="${esc(u.username)}">Reset PW</button>`;
+        if(u.hasToken) btns+=`<button class="ubtn" data-uact="forcelogout" data-u="${esc(u.username)}">Paksa Logout</button>`;
+      }
+    }
+    return `<div class="urow">
+      <div class="uinfo"><b>${esc(u.name||u.username)}</b><span class="orig">@${esc(u.username)} · ${esc(isAdmin?'Administrator':'Admin')}</span></div>
+      <div class="utop">${uStatusChip(u.status)}</div>
+      <div class="uacts">${btns}</div>
+    </div>`;
+  }).join('');
+}
+$('#usersRefresh').onclick=loadUsers;
+$('#usersBody').addEventListener('click',async e=>{
+  const b=e.target.closest('[data-uact]'); if(!b) return;
+  const act=b.dataset.uact, username=b.dataset.u;
+  let payload={username};
+  if(act==='resetpw'){
+    const np=prompt('Password sementara baharu untuk @'+username+':');
+    if(!np){ return; }
+    payload.newPassword=np;
+  } else {
+    const labels={approve:'luluskan',reject:'tolak',disable:'nyahaktifkan',enable:'aktifkan semula',forcelogout:'paksa logout'};
+    if(!confirm('Pasti nak '+(labels[act]||act)+' @'+username+'?')) return;
+  }
+  b.disabled=true;
+  try{
+    const r=await apiAuth(act,payload);
+    if(r&&r.error==='auth'){ onAuthLost(); closeOverlay('usersModal'); return; }
+    if(r&&r.ok){
+      toast('✅ Selesai: '+act,'ok');
+      if(act==='resetpw') toast('🔑 Password sementara @'+username+': '+payload.newPassword,'ok');
+      await loadUsers();
+    } else { toast('⚠️ Gagal: '+((r&&r.error)||'ralat'),'err'); b.disabled=false; }
+  }catch(e){ toast('⚠️ Gagal hubungi server','err'); b.disabled=false; }
+});
 
 function openSettings(){
   $('#setEndpoint').value=getEndpoint(); showOverlay('settingsModal');
