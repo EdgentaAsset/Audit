@@ -403,6 +403,15 @@ main{padding:8px 12px 120px}
 .dash-last{font-size:11px;color:var(--label);font-weight:600;margin-top:9px}
 .miniact.on{background:#fff;color:var(--blue)}
 
+/* ===== Papan Sumbangan Admin ===== */
+.lboard{display:flex;flex-direction:column;gap:7px;margin-top:4px}
+.lbrow{display:grid;grid-template-columns:26px minmax(70px,1fr) 2fr 30px;align-items:center;gap:8px}
+.lbrank{font-size:13px;font-weight:800;text-align:center}
+.lbname{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.lbbar{height:9px;border-radius:999px;background:var(--gray-200);overflow:hidden}
+.lbfill{display:block;height:100%;border-radius:999px;background:var(--blue)}
+.lbn{font-size:13px;font-weight:800;text-align:right;color:var(--ink)}
+
 /* ===== Pengurusan Pengguna ===== */
 .urow{display:grid;grid-template-columns:1fr auto;gap:6px 10px;align-items:center;
   padding:11px 0;border-bottom:1px solid var(--line)}
@@ -946,16 +955,27 @@ function renderDashboard(){
   const el=$('#dashboard'); if(!el) return;
   let local=0,sending=0,ok=0,fail=0,fixed=0,noserial=0,nophoto=0;
   const total=auditMap.size;
+  const contrib=new Map();   // nama (dicap-server) -> bilangan tick
   for(const [no,o] of auditMap){
     const s=o.dataStatus||'local';
     if(s==='local'||s==='draft')local++; else if(s==='sending')sending++; else if(s==='confirmed')ok++; else if(s==='failed')fail++;
     if(o.edits&&Object.keys(o.edits).length)fixed++;
+    if(o.checked){ const u=String(o.user||o.checkedBy||'').trim()||'(tanpa nama)'; contrib.set(u,(contrib.get(u)||0)+1); }
     const a=ASSET_BY_NO.get(no.toUpperCase())||[];
     if(isEmptyVal(effVal(a,'serial'))) noserial++;
     const pc=photoCache.get(no)||{};
     const hasPhoto=a[F.g1]||a[F.g2]||MAIN_KINDS.concat(EXTRA_KINDS).some(k=>(o.photos&&o.photos[k])||(pc[k]&&(pc[k].url||pc[k].thumb)));
     if(!hasPhoto) nophoto++;
   }
+  const board=[...contrib.entries()].sort((a,b)=>b[1]-a[1]);
+  const boardMax=board.length?board[0][1]:0;
+  const medal=i=>i===0?'🥇':i===1?'🥈':i===2?'🥉':`${i+1}.`;
+  const boardHTML=board.length?board.map((e,i)=>`<div class="lbrow">
+      <span class="lbrank">${medal(i)}</span>
+      <span class="lbname">${esc(e[0])}</span>
+      <span class="lbbar"><span class="lbfill" style="width:${boardMax?Math.round(e[1]/boardMax*100):0}%"></span></span>
+      <span class="lbn">${e[1]}</span>
+    </div>`).join(''):'<div class="dash-last">Belum ada tick direkod.</div>';
   const pct=total?Math.round(ok/total*100):0;
   el.innerHTML=`
     <div class="dash-h">📊 Ringkasan Audit <button class="dash-x" id="dashClose" aria-label="Tutup">✕</button></div>
@@ -977,7 +997,9 @@ function renderDashboard(){
       <div class="dash-prog-top"><span>Selesai disegerak</span><b>${pct}%</b></div>
       <div class="dash-bar"><div class="dash-bar-fill" style="width:${pct}%"></div></div>
       <div class="dash-last">⟳ Sync terakhir: ${lastSyncAt?esc(fmtTime(new Date(lastSyncAt).toISOString())):'belum pernah'}</div>
-    </div>`;
+    </div>
+    <div class="dash-sub">🏆 Sumbangan Admin (jumlah tick)</div>
+    <div class="lboard">${boardHTML}</div>`;
   $('#dashClose').onclick=()=>toggleDash(false);
 }
 function toggleDash(force){
