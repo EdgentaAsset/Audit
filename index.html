@@ -2267,6 +2267,8 @@ $('#scanBtn').onclick=()=>openScanner('search',null,'qr');   // page mula = QR s
 $('#scanClose').onclick=closeScanner;
 
 async function openScanner(mode,cb,kind){
+  // Elak dua kamera serentak (iOS hanya benarkan satu) — tutup yang lama dulu.
+  if(scanActive || $('#scanVideo').srcObject) closeScanner();
   scanMode=mode||'search'; scanCaptureCb=cb||null; scanKind=kind||'any';
   const set=SCAN_SETS[scanKind]||SCAN_SETS.any;
   if(!navigator.mediaDevices||!navigator.mediaDevices.getUserMedia){
@@ -2367,6 +2369,12 @@ function closeScanner(){
   $('#scanner').classList.remove('show');
   if(scanLoop) cancelAnimationFrame(scanLoop);
   if(zxingReader){ try{zxingReader.reset();}catch(e){} zxingReader=null; }
+  // PENTING (iOS): hentikan track pada srcObject — ini stream milik ZXing (decodeFromConstraints).
+  // reset() sahaja tak melepaskan kamera dgn tepat di iOS → buka kedua hitam/stuck.
+  const v=$('#scanVideo');
+  const s=v&&v.srcObject;
+  if(s&&s.getTracks) s.getTracks().forEach(t=>t.stop());
+  if(v){ try{v.pause();}catch(e){} v.srcObject=null; }
   if(scanStream){ scanStream.getTracks().forEach(t=>t.stop()); scanStream=null; }
 }
 
