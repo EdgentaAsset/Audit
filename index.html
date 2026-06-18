@@ -2273,10 +2273,12 @@ async function openScanner(mode,cb,kind){
     toast('Kamera tidak disokong pelayar ini','err'); return; }
   $('#scanHint').textContent=set.hint;
   $('#scanner').classList.add('show'); scanActive=true;
+  const v=$('#scanVideo');
   try{
-    scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
-    const v=$('#scanVideo'); v.srcObject=scanStream; await v.play();
     if('BarcodeDetector' in window){
+      // Laluan Android: buka kamera sendiri + gelung BarcodeDetector native.
+      scanStream=await navigator.mediaDevices.getUserMedia({video:{facingMode:'environment'}});
+      v.srcObject=scanStream; await v.play();
       const supported=await BarcodeDetector.getSupportedFormats().catch(()=>[]);
       const want=set.native.filter(f=>!supported.length||supported.indexOf(f)>-1);
       let det; try{ det=new BarcodeDetector({formats:want.length?want:set.native}); }catch(e){ det=new BarcodeDetector(); }
@@ -2293,6 +2295,7 @@ async function openScanner(mode,cb,kind){
       };
       tick();
     } else {
+      // Laluan iOS/lain (tiada BarcodeDetector): biar ZXing buka & urus kamera sendiri.
       await startZXing(v);
     }
   }catch(err){
@@ -2300,24 +2303,36 @@ async function openScanner(mode,cb,kind){
   }
 }
 
+/* Muat ZXing: self-host dulu (boleh offline, di-cache SW) → CDN sandaran. */
+function loadZXing(){
+  return new Promise((res,rej)=>{
+    if(window.ZXing) return res();
+    const tryLoad=(src,next)=>{ const s=document.createElement('script'); s.src=src;
+      s.onload=()=>res(); s.onerror=next; document.head.appendChild(s); };
+    tryLoad('zxing.min.js', ()=>tryLoad('https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js',
+      ()=>rej(new Error('muat ZXing gagal'))));
+  });
+}
+
 async function startZXing(video){
   const set=SCAN_SETS[scanKind]||SCAN_SETS.any;
-  $('#scanHint').textContent='Memuatkan pengimbas… (perlu internet kali pertama)';
+  $('#scanHint').textContent='Memuatkan pengimbas…';
   try{
-    if(!window.ZXing){
-      await new Promise((res,rej)=>{const s=document.createElement('script');
-        s.src='https://unpkg.com/@zxing/library@0.21.3/umd/index.min.js';
-        s.onload=res; s.onerror=()=>rej(new Error('muat ZXing gagal')); document.head.appendChild(s);});
-    }
+    await loadZXing();
     zxingReader=new ZXing.BrowserMultiFormatReader();
     $('#scanHint').textContent=set.hint;
-    zxingReader.decodeFromVideoElement(video,(result,err)=>{
-      if(result&&scanActive){
-        const fmt=String((ZXing.BarcodeFormat&&ZXing.BarcodeFormat[result.getBarcodeFormat()])||'').toUpperCase();
-        if(set.accept(fmt)) onScan(result.getText());
-      }
-    });
-  }catch(e){ toast('Pengimbas tidak tersedia luar talian. Guna carian manual.','err'); closeScanner(); }
+    // PENTING (iOS): biar ZXing buka kamera + main video sendiri supaya gelung decode
+    // betul-betul bermula. Beri elemen video yang kita main sendiri → decode tak start di iOS.
+    await zxingReader.decodeFromConstraints(
+      {video:{facingMode:{ideal:'environment'}}},
+      video,
+      (result,err)=>{
+        if(result&&scanActive){
+          const fmt=String((ZXing.BarcodeFormat&&ZXing.BarcodeFormat[result.getBarcodeFormat()])||'').toUpperCase();
+          if(set.accept(fmt)) onScan(result.getText());
+        }
+      });
+  }catch(e){ toast('Pengimbas tidak tersedia: '+(e.message||e),'err'); closeScanner(); }
 }
 
 function onScan(text){
