@@ -197,6 +197,30 @@ main{padding:8px 12px 120px}
 .cardfoot{background:transparent}
 .photo-more{display:inline-flex;align-items:center;gap:5px;font-size:12px;font-weight:700;
   color:var(--blue);background:var(--blue-50);border:0;border-radius:var(--r-sm);padding:7px 12px;margin-top:8px;cursor:pointer}
+
+/* ===== Tab views + bottom nav (#4 — elak semak) ===== */
+.tabview{display:none}
+body.tab-senarai #view-senarai{display:block}
+body.tab-ringkasan #view-ringkasan{display:block}
+body.tab-aktiviti #view-aktiviti{display:block}
+body.tab-akaun #view-akaun{display:block}
+body:not(.tab-senarai) .searchbar{display:none}
+body:not(.tab-senarai) #fab{display:none!important}
+.tabpad{padding:var(--sp-4)}
+body{padding-bottom:calc(62px + env(safe-area-inset-bottom))}
+#bottomnav{position:fixed;left:0;right:0;bottom:0;z-index:50;display:flex;
+  background:var(--card);border-top:1px solid var(--gray-200);
+  padding-bottom:env(safe-area-inset-bottom);box-shadow:0 -2px 10px rgba(27,43,83,.06)}
+.navbtn{flex:1;display:flex;flex-direction:column;align-items:center;gap:2px;
+  padding:8px 0 7px;color:var(--gray-400);background:none;border:0;position:relative;cursor:pointer}
+.navbtn .ni{font-size:19px;line-height:1}
+.navbtn span:not(.ni):not(.navdot){font-size:11px;font-weight:700;letter-spacing:.2px}
+.navbtn.on{color:var(--blue)}
+.navdot{position:absolute;top:5px;right:calc(50% - 18px);width:8px;height:8px;border-radius:50%;background:var(--red)}
+.acct-card{background:linear-gradient(160deg,var(--blue),var(--blue-700));color:#fff;border-radius:var(--r-lg);padding:18px var(--sp-4);margin-bottom:16px}
+.acct-name{font-size:18px;font-weight:800}
+.acct-role{font-size:12px;opacity:.88;text-transform:capitalize;margin-top:3px}
+.acct-btn{width:100%;justify-content:flex-start;text-align:left;margin-bottom:10px}
 .detgrid{display:grid;grid-template-columns:1fr 1fr;gap:9px 14px}
 .detgrid .field.full{grid-column:1/-1}
 
@@ -500,31 +524,53 @@ main{padding:8px 12px 120px}
     <span class="syncpill" id="sp-ok">✅ 0</span>
     <span class="syncpill" id="sp-fail">⚠️ 0</span>
     <span class="sync-spacer"></span>
-    <button class="miniact" id="btnDash">📊 Ringkasan</button>
     <button class="miniact" id="btnSync">⟳ Segerak</button>
   </div>
 </header>
 
 <div class="warnbar hide" id="endpointWarn">⚠️ URL Pengurusan belum ditetapkan — audit disimpan lokal sahaja. Tekan ⚙️ untuk tetapkan.</div>
 
-<section class="dash hide" id="dashboard"></section>
-
-<div class="filters" id="filters">
-  <button class="chip on" data-f="all">Semua<span class="n" id="c-all"></span></button>
-  <button class="chip" data-f="unsynced">Belum Sync<span class="n" id="c-unsynced"></span></button>
-  <button class="chip" data-f="checked">Diperiksa<span class="n" id="c-checked"></span></button>
-  <button class="chip" data-f="fixed">Pembetulan<span class="n" id="c-fixed"></span></button>
+<!-- ===== Tab: Senarai ===== -->
+<div id="view-senarai" class="tabview">
+  <div class="filters" id="filters">
+    <button class="chip on" data-f="all">Semua<span class="n" id="c-all"></span></button>
+    <button class="chip" data-f="unsynced">Belum Sync<span class="n" id="c-unsynced"></span></button>
+    <button class="chip" data-f="checked">Diperiksa<span class="n" id="c-checked"></span></button>
+    <button class="chip" data-f="fixed">Pembetulan<span class="n" id="c-fixed"></span></button>
+  </div>
+  <main id="list">
+    <div class="loading"><div class="spin"></div>Memuatkan data aset…</div>
+  </main>
 </div>
 
-<main id="list">
-  <div class="loading"><div class="spin"></div>Memuatkan data aset…</div>
-</main>
+<!-- ===== Tab: Ringkasan ===== -->
+<section id="view-ringkasan" class="tabview">
+  <section class="dash" id="dashboard"></section>
+</section>
 
-<!-- FAB = Mula Audit Berpandu -->
+<!-- ===== Tab: Aktiviti ===== -->
+<section id="view-aktiviti" class="tabview">
+  <div id="activityBody" class="tabpad"></div>
+</section>
+
+<!-- ===== Tab: Akaun ===== -->
+<section id="view-akaun" class="tabview">
+  <div id="accountBody" class="tabpad"></div>
+</section>
+
+<!-- FAB = Mula Audit Berpandu (Senarai sahaja) -->
 <div class="fab" id="fab">
   <div class="pill" id="fabPill"></div>
   <button class="circle" id="fabBtn" title="Mula Audit Berpandu">▶</button>
 </div>
+
+<!-- Bottom nav (#4 — elak semak) -->
+<nav id="bottomnav">
+  <button class="navbtn on" data-tab="senarai"><span class="ni">📋</span><span>Senarai</span></button>
+  <button class="navbtn" data-tab="ringkasan"><span class="ni">📊</span><span>Ringkasan</span></button>
+  <button class="navbtn" data-tab="aktiviti"><span class="ni">⚡</span><span>Aktiviti</span><span class="navdot hide" id="navDot"></span></button>
+  <button class="navbtn" data-tab="akaun"><span class="ni">👤</span><span>Akaun</span></button>
+</nav>
 
 <!-- ===== Modals ===== -->
 <div class="overlay c" id="authModal">
@@ -1086,11 +1132,40 @@ function renderDashboard(){
     <div class="lboard">${boardHTML}</div>`;
   $('#dashClose').onclick=()=>toggleDash(false);
 }
-function toggleDash(force){
-  dashOpen = force!==undefined?force:!dashOpen;
-  $('#dashboard').classList.toggle('hide',!dashOpen);
-  $('#btnDash').classList.toggle('on',dashOpen);
-  if(dashOpen){ renderDashboard(); $('#dashboard').scrollIntoView({behavior:'smooth',block:'nearest'}); }
+let curTab='senarai';
+function showTab(name){
+  curTab=name; dashOpen=(name==='ringkasan');
+  document.body.classList.remove('tab-senarai','tab-ringkasan','tab-aktiviti','tab-akaun');
+  document.body.classList.add('tab-'+name);
+  $$('.navbtn').forEach(b=>b.classList.toggle('on',b.dataset.tab===name));
+  if(name==='ringkasan') renderDashboard();
+  else if(name==='aktiviti'){ if(typeof renderActivity==='function') renderActivity(); }
+  else if(name==='akaun'){ if(typeof renderAccount==='function') renderAccount(); }
+  window.scrollTo(0,0);
+}
+/* alias lama: toggleDash(false)=Senarai, selainnya=Ringkasan */
+function toggleDash(force){ showTab(force===false?'senarai':'ringkasan'); }
+
+/* Tab Aktiviti & Akaun — versi ringkas (diperkemas dalam Fasa 5 & 6) */
+function renderActivity(){
+  const el=$('#activityBody'); if(!el) return;
+  el.innerHTML='<div class="hint"><span class="big">⚡</span>Pusat Aktiviti — audit belum siap, ralat & status muat naik akan dipaparkan di sini.</div>';
+}
+function renderAccount(){
+  const el=$('#accountBody'); if(!el) return;
+  const s=getSession()||{};
+  el.innerHTML=`<div class="acct-card">
+      <div class="acct-name">${esc(s.name||s.username||'Pengguna')}</div>
+      <div class="acct-role">${esc(s.role||'enduser')}${s.status&&s.status!=='active'?' · '+esc(s.status):''}</div>
+    </div>
+    <button class="btn-ghost acct-btn" id="acSettings">⚙️ Tetapan</button>
+    ${isAdministrator()?'<button class="btn-ghost acct-btn" id="acUsers">👥 Pengurusan Pengguna</button>':''}
+    ${isWriter()?'<button class="btn-ghost acct-btn" id="acReg">➕ Daftar Aset Baharu</button>':''}
+    <button class="btn-ghost acct-btn" id="acLogout">🚪 Log Keluar</button>`;
+  $('#acSettings').onclick=openSettings;
+  const u=$('#acUsers'); if(u) u.onclick=openUsers;
+  const rg=$('#acReg'); if(rg) rg.onclick=()=>openRegister('');
+  $('#acLogout').onclick=doLogout;
 }
 
 /* ============================================================
@@ -2317,7 +2392,8 @@ $('#setSave').onclick=()=>{
 };
 $('#setSyncAll').onclick=()=>{ closeOverlay('settingsModal'); syncAll(true); };
 $('#btnSync').onclick=()=>syncAll(true);
-$('#btnDash').onclick=()=>toggleDash();
+$('#bottomnav').addEventListener('click',e=>{ const b=e.target.closest('.navbtn'); if(b) showTab(b.dataset.tab); });
+showTab('senarai');
 
 function updateEndpointWarn(){ $('#endpointWarn').classList.toggle('hide',!!getEndpoint()); }
 
