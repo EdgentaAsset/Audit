@@ -1691,7 +1691,7 @@ function gsUniza(no,a,o){
   const onIn=()=>{ const ch=inp.value.trim()!==(cur||''); $('#gSave').disabled=!ch; $('#gNote').textContent=ch?'Anda ubah nilai — tekan Simpan.':''; };
   inp.addEventListener('input',onIn); onIn();
   $('#gScanUniza').onclick=()=>openScanner('capture',v=>{ inp.value=v; onIn(); },'barcode');
-  $('#gSave').onclick=async()=>{ setEditField(no,'uniza',inp.value.trim(),a); const oo=await gAudit(no); oo.semakan.uniza='Dibetulkan'; await persistGuided(no,oo); toast('💾 UNIZA disimpan','ok'); guidedNext(); };
+  $('#gSave').onclick=async()=>{ const oo=await gAudit(no); setEditField(no,'uniza',inp.value.trim(),a); oo.semakan.uniza='Dibetulkan'; await persistGuided(no,oo); toast('💾 UNIZA disimpan','ok'); guidedNext(); };
 }
 
 /* ---- Langkah 2: Lokasi ---- */
@@ -1710,7 +1710,7 @@ function gsLokasi(no,a,o){
   const inp=$('#g-locno');
   const onIn=()=>{ const ch=inp.value.trim()!==(cur||''); $('#gSave').disabled=!ch; $('#gNote').textContent=ch?'Anda ubah nilai — tekan Simpan.':''; };
   inp.addEventListener('input',onIn); onIn();
-  $('#gSave').onclick=async()=>{ setEditField(no,'locno',inp.value.trim(),a); const oo=await gAudit(no); oo.semakan.lokasi='Dibetulkan'; await persistGuided(no,oo); toast('💾 Lokasi disimpan','ok'); guidedNext(); };
+  $('#gSave').onclick=async()=>{ const oo=await gAudit(no); setEditField(no,'locno',inp.value.trim(),a); oo.semakan.lokasi='Dibetulkan'; await persistGuided(no,oo); toast('💾 Lokasi disimpan','ok'); guidedNext(); };
 }
 
 /* ---- Langkah 3: Jenis Aset (baca sahaja) ---- */
@@ -1751,7 +1751,7 @@ function gsSpec(no,a,o){
   const onIn=()=>{ const ch=gb.value.trim()!==(cb||'')||gm.value.trim()!==(cm||'')||gs.value.trim()!==(cs||''); $('#gSave').disabled=!ch; $('#gNote').textContent=ch?'Anda ubah nilai — tekan Simpan.':''; };
   [gb,gm,gs].forEach(x=>x.addEventListener('input',onIn)); onIn();
   $('#gScanSerial').onclick=()=>openScanner('capture',v=>{ gs.value=v; onIn(); },'any');
-  $('#gSave').onclick=async()=>{ setEditField(no,'brand',gb.value.trim(),a); setEditField(no,'model',gm.value.trim(),a); setEditField(no,'serial',gs.value.trim(),a); const oo=await gAudit(no); oo.semakan.spec='Dibetulkan'; await persistGuided(no,oo); toast('💾 Spesifikasi disimpan','ok'); guidedNext(); };
+  $('#gSave').onclick=async()=>{ const oo=await gAudit(no); setEditField(no,'brand',gb.value.trim(),a); setEditField(no,'model',gm.value.trim(),a); setEditField(no,'serial',gs.value.trim(),a); oo.semakan.spec='Dibetulkan'; await persistGuided(no,oo); toast('💾 Spesifikasi disimpan','ok'); guidedNext(); };
 }
 
 /* ---- Langkah 5: Gambar ---- */
