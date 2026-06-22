@@ -927,7 +927,7 @@ function cardHTML(a){
   const fixed=o&&o.edits&&Object.keys(o.edits).length>0;
   const uniza=effVal(a,'uniza');
   const loc=effVal(a,'locno')||'';
-  const dept=a[F.userdept]||'';
+  const dept=a[F.deptname]||'';
   const statusText=isNew?syncSubLabel(no):(meta.label?`${meta.icon} ${meta.label}`:'');
   return `<div class="card ${meta.cls} ${open?'open':''}" data-no="${esc(no)}">
     <div class="zone-loc" data-toggle>
