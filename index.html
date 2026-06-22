@@ -319,8 +319,9 @@ body{padding-bottom:calc(62px + env(safe-area-inset-bottom))}
   font-size:12px;font-weight:800;display:flex;align-items:center;justify-content:center}
 .wz-lbl b{display:block;font-size:13.5px;color:var(--ink);font-weight:800}
 .wz-lbl span{display:block;font-size:11px;color:var(--label);font-weight:600}
-.wz-body{display:flex;gap:9px}
-.wz-take{flex:1;background:var(--blue);color:#fff;border-radius:11px;padding:12px;font-size:13px;font-weight:800}
+.wz-body{display:flex;flex-wrap:wrap;gap:9px}
+.wz-take{flex:1;min-width:110px;background:var(--blue);color:#fff;border-radius:11px;padding:12px;font-size:13px;font-weight:800}
+.wz-gal{flex:1;min-width:110px;background:#fff;color:var(--blue);border:1.5px solid var(--blue);border-radius:11px;padding:12px;font-size:13px;font-weight:800}
 .wz-skip{background:#f1f5f9;color:#64748b;border-radius:11px;padding:12px 16px;font-size:13px;font-weight:800}
 .wz-skipped{flex:1;display:flex;align-items:center;justify-content:space-between;gap:8px;
   font-size:12.5px;font-weight:700;color:#94a3b8}
@@ -332,7 +333,7 @@ body{padding-bottom:calc(62px + env(safe-area-inset-bottom))}
 .wz-side{flex:1;display:flex;flex-direction:column;gap:8px}
 .wz-badge{font-size:11px;font-weight:800;align-self:flex-start;border-radius:7px;padding:4px 8px;background:var(--green-bg);color:var(--green)}
 .wz-badge.f{background:var(--red-bg);color:var(--red)}
-.wz-btns{display:flex;gap:7px}
+.wz-btns{display:flex;flex-wrap:wrap;gap:7px}
 .wz-btn{background:#eff6ff;color:var(--blue);border:1px solid #bfdbfe;border-radius:9px;padding:7px 12px;font-size:12px;font-weight:800}
 .wz-btn.del{background:var(--red-bg);color:var(--red);border-color:#fecaca}
 .wz-foot{display:flex;gap:9px;margin-top:4px}
@@ -1721,7 +1722,7 @@ function gsJenis(no,a,o){
     <div class="field"><div class="lbl">Jenis Aset</div><div class="val">${valHTML(a[F.typedesc])}</div></div>
     <div class="field" style="margin-top:8px"><div class="lbl">Kod Jenis</div><div class="val">${valHTML(a[F.typecode])}</div></div>
     <div class="orig" style="margin-top:8px">Jenis aset tak boleh diedit. Jika salah/bermasalah → tekan Bermasalah & ambil gambar bukti.</div>
-    ${st==='Bermasalah'?`<div class="gnote">${hasIsu?'📷 Gambar isu tersimpan. ':'📷 Sila ambil gambar bukti. '}<button class="gbtn mini" data-gbermasalah>${hasIsu?'Ganti gambar':'Ambil gambar'}</button></div>`:''}
+    ${st==='Bermasalah'?`<div class="gnote">${hasIsu?'📷 Gambar isu tersimpan. ':'📷 Sila ambil gambar bukti. '}<button class="gbtn mini" data-gisu-cam>📸 Kamera</button> <button class="gbtn mini" data-gisu-gal>🖼️ Galeri</button></div>`:''}
     <div class="gbtns">
       <button class="gbtn ok ${st==='Tiada Isu'?'on':''}" data-gset="jenis|Tiada Isu">✓ Tiada Isu</button>
       <button class="gbtn warn ${st==='Bermasalah'?'on':''}" data-gbermasalah>⚠️ Bermasalah (gambar)</button>
@@ -1830,7 +1831,11 @@ async function submitGuided(no){
 
 async function guidedBermasalah(no){
   const oo=await gAudit(no); oo.semakan.jenis='Bermasalah'; await persistGuided(no,oo);
-  triggerPhoto(no,'jenisisu');   // buka kamera; selepas upload → renderGuidedStep
+  renderGuidedStep();   // tanda Bermasalah → tunjuk butang Kamera/Galeri
+}
+async function guidedIsuPhoto(no,source){
+  const oo=await gAudit(no); oo.semakan.jenis='Bermasalah'; await persistGuided(no,oo);
+  triggerPhoto(no,'jenisisu',source);   // selepas upload → renderGuidedStep
 }
 function guidedUploadFoto(no){ openPhotoWizard(no,false); }
 
@@ -1839,6 +1844,8 @@ $('#guidedBody').addEventListener('click',async e=>{
   const no=guidedAsset; if(!no) return; const t=e.target;
   const setEl=t.closest('[data-gset]');
   if(setEl){ const p=setEl.dataset.gset.split('|'); const oo=await gAudit(no); oo.semakan[p[0]]=p[1]; await persistGuided(no,oo); guidedNext(); return; }   // tekan status → terus ke langkah seterusnya
+  if(t.closest('[data-gisu-cam]')){ guidedIsuPhoto(no,'camera'); return; }
+  if(t.closest('[data-gisu-gal]')){ guidedIsuPhoto(no,'gallery'); return; }
   if(t.closest('[data-gbermasalah]')){ guidedBermasalah(no); return; }
   if(t.closest('#gUploadFoto')){ guidedUploadFoto(no); return; }
   if(t.closest('[data-view]')){ const u=t.closest('[data-view]').dataset.view; if(u)window.open(u,'_blank','noopener'); return; }
@@ -1909,25 +1916,31 @@ function slotHTML(no,kind){
         <div class="wz-side">
           <span class="wz-badge ${ph.status==='failed'?'f':'ok'}">${ph.status==='failed'?'⚠️ Gagal — cuba ganti':(url?'✅ Tersimpan':'💾 Sedia hantar')}</span>
           <div class="wz-btns">
-            <button class="wz-btn" data-pcap="${kind}">Ganti</button>
+            <button class="wz-btn" data-pcap="${kind}">📸 Kamera</button>
+            <button class="wz-btn" data-pgal="${kind}">🖼️ Galeri</button>
             <button class="wz-btn del" data-pdel="${kind}">Buang</button>
           </div>
         </div>
       </div>`;
   } else if(tiada){
-    body=`<div class="wz-body"><div class="wz-skipped">➖ Tiada nameplate <button class="wz-btn" data-pcap="${kind}">Ambil gambar</button></div></div>`;
+    body=`<div class="wz-body"><div class="wz-skipped">➖ Tiada nameplate <button class="wz-btn" data-pcap="${kind}">📸 Kamera</button> <button class="wz-btn" data-pgal="${kind}">🖼️ Galeri</button></div></div>`;
   } else if(skipped){
-    body=`<div class="wz-body"><div class="wz-skipped">↷ Dilangkau <button class="wz-btn" data-pcap="${kind}">Ambil sekarang</button></div></div>`;
+    body=`<div class="wz-body"><div class="wz-skipped">↷ Dilangkau <button class="wz-btn" data-pcap="${kind}">📸 Kamera</button> <button class="wz-btn" data-pgal="${kind}">🖼️ Galeri</button></div></div>`;
   } else if(req && kind==='nameplate'){
     body=`<div class="wz-body">
-        <button class="wz-take" data-pcap="${kind}">📸 Ambil / Pilih</button>
+        <button class="wz-take" data-pcap="${kind}">📸 Kamera</button>
+        <button class="wz-gal" data-pgal="${kind}">🖼️ Galeri</button>
         <button class="wz-skip" data-ptiada="${kind}">Tiada</button>
       </div>`;
   } else if(req){
-    body=`<div class="wz-body"><button class="wz-take" data-pcap="${kind}" style="flex:1">📸 Ambil / Pilih Gambar</button></div>`;
+    body=`<div class="wz-body">
+        <button class="wz-take" data-pcap="${kind}">📸 Kamera</button>
+        <button class="wz-gal" data-pgal="${kind}">🖼️ Galeri</button>
+      </div>`;
   } else {
     body=`<div class="wz-body">
-        <button class="wz-take" data-pcap="${kind}">📸 Ambil / Pilih Gambar</button>
+        <button class="wz-take" data-pcap="${kind}">📸 Kamera</button>
+        <button class="wz-gal" data-pgal="${kind}">🖼️ Galeri</button>
         <button class="wz-skip" data-pskip="${kind}">Skip</button>
       </div>`;
   }
@@ -1938,10 +1951,13 @@ function slotHTML(no,kind){
 }
 
 /* ---- Tangkap / proses / buang gambar ---- */
-function triggerPhoto(no,kind){
+function triggerPhoto(no,kind,source){
   if(!isWriter()){ toast('🔒 Hanya Admin diluluskan boleh buat tindakan ini','err'); return; }
   pendingPhotoTarget={asset:no,kind};
-  const fi=$('#fileInput'); fi.value=''; fi.click();
+  const fi=$('#fileInput'); fi.value='';
+  if(source==='gallery') fi.removeAttribute('capture');   // galeri: biar pemilih foto
+  else fi.setAttribute('capture','environment');          // default: kamera
+  fi.click();
 }
 $('#fileInput').addEventListener('change',async e=>{
   const file=e.target.files&&e.target.files[0];
@@ -2376,7 +2392,8 @@ $('#list').addEventListener('click',e=>{
 /* delegated clicks dalam wizard gambar */
 $('#photoBody').addEventListener('click',e=>{
   const t=e.target; if(!wizardAsset) return;
-  if(t.closest('[data-pcap]')){ triggerPhoto(wizardAsset,t.closest('[data-pcap]').dataset.pcap); return; }
+  if(t.closest('[data-pcap]')){ triggerPhoto(wizardAsset,t.closest('[data-pcap]').dataset.pcap,'camera'); return; }
+  if(t.closest('[data-pgal]')){ triggerPhoto(wizardAsset,t.closest('[data-pgal]').dataset.pgal,'gallery'); return; }
   if(t.closest('[data-pdel]')){ removePhoto(wizardAsset,t.closest('[data-pdel]').dataset.pdel); return; }
   if(t.closest('[data-ptiada]')){ markTiada(wizardAsset,t.closest('[data-ptiada]').dataset.ptiada); return; }
   if(t.closest('[data-pskip]')){ wizardSkip.add(t.closest('[data-pskip]').dataset.pskip); renderWizard(wizardAsset); return; }
