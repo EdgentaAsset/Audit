@@ -1,0 +1,44 @@
+<svg viewBox="0 0 512 512" xmlns="http://www.w3.org/2000/svg">
+  <defs>
+    <radialGradient id="bg" cx="50%" cy="42%" r="65%">
+      <stop offset="0%"   stop-color="#1f4d90"/>
+      <stop offset="55%"  stop-color="#102d60"/>
+      <stop offset="100%" stop-color="#091a3c"/>
+    </radialGradient>
+    <clipPath id="gc">
+      <circle cx="256" cy="265" r="150"/>
+    </clipPath>
+  </defs>
+
+  <!-- Background rounded square -->
+  <rect width="512" height="512" rx="108" ry="108" fill="url(#bg)"/>
+
+  <!-- Globe wireframe — clipped to sphere boundary -->
+  <g clip-path="url(#gc)" fill="none" stroke="white" stroke-width="2" opacity="0.82">
+    <!-- Latitude lines: equator, ±30°, ±60° -->
+    <ellipse cx="256" cy="265" rx="150" ry="40"/>
+    <ellipse cx="256" cy="190" rx="130" ry="35"/>
+    <ellipse cx="256" cy="135" rx="75"  ry="20"/>
+    <ellipse cx="256" cy="340" rx="130" ry="35"/>
+    <ellipse cx="256" cy="395" rx="75"  ry="20"/>
+    <!-- Longitude meridians: ≈20° and ≈52° off centre -->
+    <ellipse cx="256" cy="265" rx="51"  ry="150"/>
+    <ellipse cx="256" cy="265" rx="118" ry="150"/>
+  </g>
+
+  <!-- Globe outer ring -->
+  <circle cx="256" cy="265" r="150" fill="none" stroke="white" stroke-width="2.5" opacity="0.92"/>
+
+  <!-- UEM -->
+  <text x="256" y="116"
+    font-family="'Arial Black','Arial Bold',Arial,sans-serif"
+    font-weight="900" font-size="88"
+    fill="white" text-anchor="middle" letter-spacing="-1">UEM</text>
+
+  <!-- EDGENTA badge -->
+  <rect x="106" y="442" width="300" height="52" rx="26" ry="26" fill="#1d55d0"/>
+  <text x="256" y="479"
+    font-family="'Arial Bold',Arial,sans-serif"
+    font-weight="700" font-size="27"
+    fill="white" text-anchor="middle" letter-spacing="3.5">EDGENTA</text>
+</svg>
