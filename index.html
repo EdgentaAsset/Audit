@@ -1842,7 +1842,7 @@ $('#guidedBody').addEventListener('click',async e=>{
   if(setEl){ const p=setEl.dataset.gset.split('|'); const oo=await gAudit(no); oo.semakan[p[0]]=p[1]; await persistGuided(no,oo); guidedNext(); return; }   // tekan status → terus ke langkah seterusnya
   if(t.closest('[data-gbermasalah]')){ guidedBermasalah(no); return; }
   if(t.closest('#gUploadFoto')){ guidedUploadFoto(no); return; }
-  if(t.closest('[data-gview]')){ const u=t.closest('[data-gview]').dataset.gview; if(u)window.open(u,'_blank','noopener'); return; }
+  if(t.closest('[data-view]')){ const u=t.closest('[data-view]').dataset.view; if(u)window.open(u,'_blank','noopener'); return; }
 });
 
 /* ============================================================
