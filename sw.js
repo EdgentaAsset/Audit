@@ -2,7 +2,7 @@
  * Naikkan VERSION setiap kali deploy (atau bila Data.xlsx/app-data.js dikemas kini)
  * supaya pengguna dapat versi terbaharu secara automatik.
  */
-const VERSION = 'hosza-audit-ui-202606190200';
+const VERSION = 'hosza-audit-ui-202606220100';
 const SHELL = [
   './',
   './index.html',
