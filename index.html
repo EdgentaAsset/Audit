@@ -191,6 +191,7 @@ main{padding:8px 12px 120px}
 .card.st-baharu .assetno{color:var(--civl)}
 .ci-sub{margin-top:4px;font-size:12.5px;color:var(--gray-600);display:flex;flex-wrap:wrap;gap:3px 10px;line-height:1.3}
 .ci-uniza{font-weight:600;color:var(--gray-500)}
+.ci-uniza.empty{font-weight:400;color:#cbd5e1}
 .ci-type{color:var(--ink-soft);font-weight:600}
 .ci-serial{color:var(--gray-500)}
 .ci-tags{display:flex;flex-wrap:wrap;gap:5px;margin-top:8px}
@@ -925,9 +926,8 @@ function cardHTML(a){
   const isNew=o&&o.isNew;
   const fixed=o&&o.edits&&Object.keys(o.edits).length>0;
   const uniza=effVal(a,'uniza');
-  const loc=effVal(a,'locname')||a[F.locno]||'';
-  const dept=a[F.deptname]||'';
-  const ser=effVal(a,'serial');
+  const loc=effVal(a,'locno')||'';
+  const dept=a[F.userdept]||'';
   const statusText=isNew?syncSubLabel(no):(meta.label?`${meta.icon} ${meta.label}`:'');
   return `<div class="card ${meta.cls} ${open?'open':''}" data-no="${esc(no)}">
     <div class="zone-loc" data-toggle>
@@ -940,9 +940,8 @@ function cardHTML(a){
         ${statusText?`<span class="ci-status">${esc(statusText)}</span>`:''}
       </div>
       <div class="ci-sub">
-        ${uniza?`<span class="ci-uniza">UNIZA ${esc(uniza)}</span>`:''}
+        <span class="ci-uniza${(uniza&&!isEmptyVal(uniza))?'':' empty'}">${(uniza&&!isEmptyVal(uniza))?esc(uniza):'—'}</span>
         ${a[F.typedesc]?`<span class="ci-type">${esc(a[F.typedesc])}</span>`:''}
-        ${ser&&!isEmptyVal(ser)?`<span class="ci-serial">SN ${esc(ser)}</span>`:''}
       </div>
       ${(isNew||fixed)?`<div class="ci-tags">
         ${isNew?'<span class="tag new">➕ Aset Baharu</span>':''}
